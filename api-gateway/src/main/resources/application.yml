@@ -1,0 +1,30 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: core-service
+              uri: ${CORE_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/auth/**,/api/users/**,/api/rooms/**,/api/favorites/**,/api/admin/**
+
+            - id: rental-service
+              uri: ${RENTAL_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/rentals/**,/api/tenancies/**,/api/invoices/**,/api/chat/**
+
+            - id: ai-service
+              uri: ${AI_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/ai/**
+
+            - id: face-service
+              uri: ${FACE_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/face/**
