@@ -1,4 +1,4 @@
-package com.example.rental_service;
+package com.team4.rental;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

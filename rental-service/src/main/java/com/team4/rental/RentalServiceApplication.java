@@ -1,4 +1,4 @@
-package com.example.rental_service;
+package com.team4.rental;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
