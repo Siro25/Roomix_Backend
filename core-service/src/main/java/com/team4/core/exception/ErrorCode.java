@@ -15,6 +15,9 @@ public enum ErrorCode {
     INVALID_ROLE(1006, HttpStatus.BAD_REQUEST, "Chỉ có thể đăng ký vai trò TENANT hoặc LANDLORD"),
     UNAUTHENTICATED(1007, HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để thực hiện yêu cầu này"),
     ACCESS_DENIED(1008, HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện yêu cầu này"),
+    HOUSE_NOT_FOUND(2001, HttpStatus.NOT_FOUND, "Không tìm thấy nhà"),
+    HOUSE_HAS_FLOORS(2007, HttpStatus.CONFLICT, "Không thể xóa nhà còn tầng"),
+    HOUSE_HAS_DEPENDENCIES(2014, HttpStatus.CONFLICT, "Không thể xóa nhà có dữ liệu phụ thuộc"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

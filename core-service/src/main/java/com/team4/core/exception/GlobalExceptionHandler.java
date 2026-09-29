@@ -16,6 +16,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import tools.jackson.databind.ObjectMapper;
@@ -55,6 +57,11 @@ public class GlobalExceptionHandler implements AuthenticationEntryPoint, AccessD
                 .message(errorCode.getMessage())
                 .build();
         return ResponseEntity.status(errorCode.getStatus()).body(body);
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    ResponseEntity<ApiResponse<Void>> handleInvalidParameter(Exception exception) {
+        return response(ErrorCode.INVALID_REQUEST);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

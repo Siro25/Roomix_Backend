@@ -71,6 +71,7 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/houses", "/api/houses/**").hasRole("LANDLORD")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource
                                                 .jwt(jwt -> jwt.decoder(tokens).jwtAuthenticationConverter(converter)))
