@@ -61,6 +61,13 @@ public class House {
         this.landlord = landlord;
     }
 
+    public void synchronizeFloorCount(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException("Floor count cannot be negative");
+        }
+        this.totalFloors = count;
+    }
+
     public void updateDetails(String name, String addressStreet, String ward, String district,
             String city, BigDecimal latitude, BigDecimal longitude, String description) {
         this.name = name;

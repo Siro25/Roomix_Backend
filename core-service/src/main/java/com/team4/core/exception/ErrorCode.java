@@ -16,6 +16,9 @@ public enum ErrorCode {
     UNAUTHENTICATED(1007, HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để thực hiện yêu cầu này"),
     ACCESS_DENIED(1008, HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện yêu cầu này"),
     HOUSE_NOT_FOUND(2001, HttpStatus.NOT_FOUND, "Không tìm thấy nhà"),
+    FLOOR_NOT_FOUND(2002, HttpStatus.NOT_FOUND, "Không tìm thấy tầng"),
+    FLOOR_NUMBER_EXISTED(2005, HttpStatus.CONFLICT, "Số tầng đã tồn tại trong nhà"),
+    FLOOR_HAS_ROOMS(2008, HttpStatus.CONFLICT, "Không thể xóa tầng còn phòng"),
     HOUSE_HAS_FLOORS(2007, HttpStatus.CONFLICT, "Không thể xóa nhà còn tầng"),
     HOUSE_HAS_DEPENDENCIES(2014, HttpStatus.CONFLICT, "Không thể xóa nhà có dữ liệu phụ thuộc"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");

@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -71,6 +73,17 @@ public class GlobalExceptionHandler implements AuthenticationEntryPoint, AccessD
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
+        if (exception instanceof ErrorResponse error) {
+            var status = error.getStatusCode();
+            var httpStatus = HttpStatus.resolve(status.value());
+            var body = ApiResponse.<Void>builder()
+                    .code(status.is4xxClientError() ? ErrorCode.INVALID_REQUEST.getCode()
+                            : ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
+                    .message(httpStatus == null ? "HTTP error" : httpStatus.getReasonPhrase())
+                    .build();
+            // Preserve framework status and headers such as Allow (405) and Accept (415).
+            return ResponseEntity.status(status).headers(error.getHeaders()).body(body);
+        }
         log.error("Unhandled application exception", exception);
         return response(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }

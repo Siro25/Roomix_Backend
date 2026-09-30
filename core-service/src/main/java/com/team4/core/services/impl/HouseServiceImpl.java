@@ -41,7 +41,7 @@ public class HouseServiceImpl implements HouseService {
     @Override
     public PageResponse<HouseResponse> list(UUID landlordId, String keyword, String city, String ward,
             int page, int size, String sort) {
-        if (page < 0 || size < 1 || size > 100) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         var pageable = PageRequest.of(page, size, parseSort(sort));
