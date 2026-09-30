@@ -15,6 +15,12 @@ public enum ErrorCode {
     INVALID_ROLE(1006, HttpStatus.BAD_REQUEST, "Chỉ có thể đăng ký vai trò TENANT hoặc LANDLORD"),
     UNAUTHENTICATED(1007, HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để thực hiện yêu cầu này"),
     ACCESS_DENIED(1008, HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện yêu cầu này"),
+    INVALID_USER_FILTER(1009, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ lọc người dùng TENANT hoặc LANDLORD"),
+    USER_STATUS_UNCHANGED(1010, HttpStatus.CONFLICT, "Tài khoản đã ở trạng thái yêu cầu"),
+    INVALID_USER_STATUS_TRANSITION(1011, HttpStatus.CONFLICT, "Không thể chuyển trạng thái tài khoản theo yêu cầu"),
+    LANDLORD_REQUIRED(1012, HttpStatus.BAD_REQUEST, "Tài khoản được chọn không phải chủ trọ"),
+    LANDLORD_NOT_PENDING(1013, HttpStatus.CONFLICT, "Hồ sơ chủ trọ không ở trạng thái chờ xác minh"),
+    ADMIN_ACCOUNT_MANAGEMENT_NOT_ALLOWED(1014, HttpStatus.BAD_REQUEST, "Không quản lý tài khoản Admin tại API này"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

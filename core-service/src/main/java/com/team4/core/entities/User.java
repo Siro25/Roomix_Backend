@@ -66,4 +66,8 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     Instant updatedAt;
+
+    public void changeStatus(UserStatus newStatus) {
+        status = newStatus;
+    }
 }
