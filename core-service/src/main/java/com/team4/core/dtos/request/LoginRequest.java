@@ -1,11 +1,7 @@
 package com.team4.core.dtos.request;
 
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,5 +22,4 @@ public class LoginRequest {
     @NotBlank
     @Size(max = 72)
     String password;
-
 }
