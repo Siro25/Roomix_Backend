@@ -6,65 +6,85 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "houses")
 @Getter
-@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class House {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
 
-    @Column(name = "landlord_id", nullable = false)
-    UUID landlordId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "landlord_id", nullable = false, updatable = false)
+    private User landlord;
 
     @Column(nullable = false, length = 150)
-    String name;
-
+    private String name;
     @Column(name = "address_street", nullable = false, length = 255)
-    String addressStreet;
-
+    private String addressStreet;
     @Column(nullable = false, length = 100)
-    String ward;
-
+    private String ward;
+    @Column(length = 100)
+    private String district;
     @Column(nullable = false, length = 100)
-    String district;
-
-    @Column(nullable = false, length = 100)
-    String city;
-
+    private String city;
+    @Column(precision = 11, scale = 8)
+    private BigDecimal latitude;
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
+    @Column(columnDefinition = "text")
+    private String description;
     @Column(name = "total_floors", nullable = false)
-    int totalFloors;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "house", fetch = FetchType.LAZY)
-    @OrderBy("floorNumber ASC")
-    List<Floor> floors = new ArrayList<>();
+    private int totalFloors;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    Instant createdAt;
-
+    private Instant createdAt;
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    Instant updatedAt;
+    private Instant updatedAt;
+
+    @OneToMany(mappedBy = "house", fetch = FetchType.LAZY)
+    @OrderBy("floorNumber ASC")
+    private List<Floor> floors = new ArrayList<>();
+
+    public House(User landlord) {
+        this.landlord = landlord;
+    }
+
+    public void synchronizeFloorCount(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException("Floor count cannot be negative");
+        }
+        this.totalFloors = count;
+    }
+
+    public void updateDetails(String name, String addressStreet, String ward, String district,
+            String city, BigDecimal latitude, BigDecimal longitude, String description) {
+        this.name = name;
+        this.addressStreet = addressStreet;
+        this.ward = ward;
+        this.district = district;
+        this.city = city;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.description = description;
+    }
 }

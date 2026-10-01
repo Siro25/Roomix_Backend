@@ -6,6 +6,8 @@ import com.team4.core.enums.RoomStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,8 +36,9 @@ public class LandlordPropertyResponse {
         return LandlordPropertyResponse.builder()
                 .houseId(house.getId())
                 .houseName(house.getName())
-                .address(String.join(", ",
-                        house.getAddressStreet(), house.getWard(), house.getDistrict(), house.getCity()))
+                .address(Stream.of(house.getAddressStreet(), house.getWard(), house.getDistrict(), house.getCity())
+                        .filter(value -> value != null && !value.isBlank())
+                        .collect(Collectors.joining(", ")))
                 .totalFloors(house.getTotalFloors())
                 .rooms(rooms)
                 .build();

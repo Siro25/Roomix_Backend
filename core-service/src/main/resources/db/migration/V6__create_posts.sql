@@ -11,9 +11,9 @@ CREATE TABLE posts (
     reject_reason TEXT,
     view_count BIGINT NOT NULL DEFAULT 0,
     approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    approved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    approved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_posts_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'HIDDEN')),
     CONSTRAINT ck_posts_rental_price CHECK (rental_price >= 0),
     CONSTRAINT ck_posts_deposit_amount CHECK (deposit_amount >= 0)

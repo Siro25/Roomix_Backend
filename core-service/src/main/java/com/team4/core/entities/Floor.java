@@ -8,43 +8,52 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import jakarta.persistence.UniqueConstraint;
 import java.util.UUID;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.FieldDefaults;
 
 @Entity
-@Table(name = "floors")
+@Table(name = "floors", uniqueConstraints = @UniqueConstraint(
+        name = "uk_floors_house_number", columnNames = {"house_id", "floor_number"}))
 @Getter
-@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Floor {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "house_id", nullable = false)
-    House house;
+    @JoinColumn(name = "house_id", nullable = false, updatable = false)
+    private House house;
 
     @Column(name = "floor_number", nullable = false)
-    int floorNumber;
+    private int floorNumber;
 
     @Column(nullable = false, length = 100)
-    String name;
+    private String name;
 
-    @Builder.Default
+    @Column(length = 255)
+    private String description;
+
     @OneToMany(mappedBy = "floor", fetch = FetchType.LAZY)
     @OrderBy("roomNumber ASC")
-    List<Room> rooms = new ArrayList<>();
+    private List<Room> rooms = new ArrayList<>();
+
+    public Floor(House house, int floorNumber, String name, String description) {
+        this.house = house;
+        updateDetails(floorNumber, name, description);
+    }
+
+    public void updateDetails(int floorNumber, String name, String description) {
+        this.floorNumber = floorNumber;
+        this.name = name;
+        this.description = description;
+    }
 }

@@ -3,7 +3,7 @@ package com.team4.core.services.impl;
 import com.team4.core.dtos.request.AuditContext;
 import com.team4.core.dtos.response.AdminUserResponse;
 import com.team4.core.dtos.response.LandlordPropertyResponse;
-import com.team4.core.dtos.response.PageResponse;
+import com.team4.core.dtos.response.AdminPageResponse;
 import com.team4.core.entities.User;
 import com.team4.core.enums.Role;
 import com.team4.core.enums.NotificationType;
@@ -40,12 +40,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<AdminUserResponse> searchUsers(
+    public AdminPageResponse<AdminUserResponse> searchUsers(
             Role role, UserStatus status, String keyword, Pageable pageable) {
         validateManagedRole(role);
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : null;
         var users = userRepository.searchAdminUsers(role, status, normalizedKeyword, pageable);
-        return PageResponse.from(users, AdminUserResponse::from);
+        return AdminPageResponse.from(users, AdminUserResponse::from);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public List<LandlordPropertyResponse> getLandlordProperties(UUID landlordId) {
         User landlord = findManagedUser(landlordId);
         requireLandlord(landlord);
-        return houseRepository.findDistinctByLandlordIdOrderByCreatedAtDesc(landlordId).stream()
+        return houseRepository.findDistinctByLandlord_IdOrderByCreatedAtDesc(landlordId).stream()
                 .map(LandlordPropertyResponse::from)
                 .toList();
     }
