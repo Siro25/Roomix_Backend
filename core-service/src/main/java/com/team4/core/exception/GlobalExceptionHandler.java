@@ -57,6 +57,7 @@ public class GlobalExceptionHandler implements AuthenticationEntryPoint, AccessD
         var body = ApiResponse.<Void>builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
+                .errors(errors)
                 .build();
         return ResponseEntity.status(errorCode.getStatus()).body(body);
     }

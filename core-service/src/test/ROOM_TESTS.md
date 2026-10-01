@@ -12,7 +12,7 @@ Chạy toàn bộ Core:
 mvn -f core-service/pom.xml test
 ```
 
-`RoomApiIntegrationTest` chạy HTTP → JWT thật → Service → Repository → database H2 riêng. Flyway chạy V1–V4, Hibernate kiểm tra schema. Không mock service/repository, không cần PostgreSQL bên ngoài. Mỗi request có transaction thật; test kiểm tra rollback và thao tác đồng thời.
+`RoomApiIntegrationTest` chạy HTTP → JWT thật → Service → Repository → database H2 riêng. Flyway chạy V1–V6, Hibernate kiểm tra schema. Không mock service/repository, không cần PostgreSQL bên ngoài. Mỗi request có transaction thật; test kiểm tra rollback và thao tác đồng thời.
 
 | Nhóm | Tình huống |
 |---|---|
@@ -32,4 +32,4 @@ Theo lựa chọn của người dùng, **DELETE hiện chỉ kiểm tra Core**.
 
 Bảng `test_room_dependents` chỉ dùng trong test, mô phỏng FK của module bài đăng/dữ liệu phụ thuộc chưa triển khai. Quan hệ nhà–tầng–phòng được kiểm tra trên các bảng và entity thật.
 
-H2 PostgreSQL mode không thay thế kiểm thử PostgreSQL thực tế, đặc biệt về khóa/concurrency. Cơ chế kiểm tra tài khoản bị khóa khi JWT cũ còn hạn vẫn thuộc phần xác thực chưa được sửa trong các lượt trước.
+H2 PostgreSQL mode không thay thế kiểm thử PostgreSQL thực tế, đặc biệt về khóa/concurrency. Sau merge, AccountStatusFilter kiểm tra trạng thái tài khoản trên mỗi request đã xác thực. MergedWorkflowTest kiểm tra JWT cũ bị từ chối sau khi Admin khóa tài khoản và dùng lại được sau khi mở khóa.

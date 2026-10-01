@@ -9,6 +9,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import java.util.ArrayList;
+import java.util.List;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -56,6 +60,10 @@ public class House {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "house", fetch = FetchType.LAZY)
+    @OrderBy("floorNumber ASC")
+    private List<Floor> floors = new ArrayList<>();
 
     public House(User landlord) {
         this.landlord = landlord;

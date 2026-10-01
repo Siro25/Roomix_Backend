@@ -12,7 +12,7 @@ Chỉ chạy phần tầng:
 mvn -f core-service/pom.xml -Dtest=FloorApiIntegrationTest test
 ```
 
-`FloorApiIntegrationTest` kiểm tra toàn bộ chuỗi HTTP → JWT/Security → Controller → Service → JPA → database H2 riêng trong RAM. Chạy migration V1, V2, V3 và Hibernate schema validation. Không cần PostgreSQL bên ngoài, không dùng mock service/repository. Mỗi request ghi dữ liệu trong transaction thật để kiểm tra commit/rollback; dữ liệu được dọn sau từng test.
+`FloorApiIntegrationTest` kiểm tra toàn bộ chuỗi HTTP → JWT/Security → Controller → Service → JPA → database H2 riêng trong RAM. Chạy migration V1–V6 và Hibernate schema validation. Không cần PostgreSQL bên ngoài, không dùng mock service/repository. Mỗi request ghi dữ liệu trong transaction thật để kiểm tra commit/rollback; dữ liệu được dọn sau từng test.
 
 | Nhóm | Nội dung |
 |---|---|

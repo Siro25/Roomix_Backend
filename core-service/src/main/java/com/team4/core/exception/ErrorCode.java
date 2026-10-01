@@ -26,6 +26,15 @@ public enum ErrorCode {
     FLOOR_HAS_ROOMS(2008, HttpStatus.CONFLICT, "Không thể xóa tầng còn phòng"),
     HOUSE_HAS_FLOORS(2007, HttpStatus.CONFLICT, "Không thể xóa nhà còn tầng"),
     HOUSE_HAS_DEPENDENCIES(2014, HttpStatus.CONFLICT, "Không thể xóa nhà có dữ liệu phụ thuộc"),
+    INVALID_USER_FILTER(1009, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ lọc người dùng TENANT hoặc LANDLORD"),
+    USER_STATUS_UNCHANGED(1010, HttpStatus.CONFLICT, "Tài khoản đã ở trạng thái yêu cầu"),
+    INVALID_USER_STATUS_TRANSITION(1011, HttpStatus.CONFLICT, "Không thể chuyển trạng thái tài khoản theo yêu cầu"),
+    LANDLORD_REQUIRED(1012, HttpStatus.BAD_REQUEST, "Tài khoản được chọn không phải chủ trọ"),
+    LANDLORD_NOT_PENDING(1013, HttpStatus.CONFLICT, "Hồ sơ chủ trọ không ở trạng thái chờ xác minh"),
+    ADMIN_ACCOUNT_MANAGEMENT_NOT_ALLOWED(1014, HttpStatus.BAD_REQUEST, "Không quản lý tài khoản Admin tại API này"),
+    POST_NOT_FOUND(1015, HttpStatus.NOT_FOUND, "Không tìm thấy bài đăng"),
+    INVALID_POST_FILTER(1016, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ xem bài đăng đang chờ duyệt"),
+    POST_NOT_PENDING(1017, HttpStatus.CONFLICT, "Bài đăng không ở trạng thái chờ duyệt"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

@@ -9,6 +9,11 @@ import com.team4.core.services.HouseService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import com.team4.core.entities.User;
+import com.team4.core.enums.UserStatus;
+import com.team4.core.security.AccountStatusFilter;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -25,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = HouseController.class, properties = "debug=false")
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, AccountStatusFilter.class})
 class HouseControllerTest {
     @Autowired MockMvc mvc;
     @MockitoBean HouseService service;
@@ -33,6 +38,11 @@ class HouseControllerTest {
     @MockitoBean UserRepository users;
     private final UUID owner = UUID.randomUUID();
     private final UUID id = UUID.randomUUID();
+
+    @BeforeEach
+    void activeUserExists() {
+        when(users.findById(owner)).thenReturn(Optional.of(User.builder().id(owner).status(UserStatus.ACTIVE).build()));
+    }
 
     @Test
     void requiresAuthenticationAndLandlordRole() throws Exception {

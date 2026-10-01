@@ -1,7 +1,6 @@
 package com.team4.core.entities;
 
-import com.team4.core.enums.Role;
-import com.team4.core.enums.UserStatus;
+import com.team4.core.enums.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,55 +18,40 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "users")
+@Table(name = "notifications")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class User {
+public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
-    String username;
+    @Column(name = "user_id", nullable = false)
+    UUID userId;
 
-    @Column(nullable = false, unique = true, length = 254)
-    String email;
+    @Column(nullable = false, length = 150)
+    String title;
 
-    @Column(name = "password_hash", nullable = false, length = 100)
-    String passwordHash;
-
-    @Column(name = "full_name", nullable = false, length = 100)
-    String fullName;
-
-    @Column(name = "phone_number", nullable = false, length = 20)
-    String phoneNumber;
-
-    @Column(name = "avatar_url", length = 500)
-    String avatarUrl;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    Role role;
+    @Column(nullable = false, columnDefinition = "text")
+    String content;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    UserStatus status;
+    NotificationType type;
+
+    @Column(name = "reference_id")
+    UUID referenceId;
+
+    @Builder.Default
+    @Column(name = "is_read", nullable = false)
+    boolean read = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    Instant updatedAt;
-
-    public void changeStatus(UserStatus newStatus) {
-        status = newStatus;
-    }
 }

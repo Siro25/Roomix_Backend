@@ -1,14 +1,10 @@
 package com.team4.core.dtos.request;
 
 import com.team4.core.enums.Role;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
