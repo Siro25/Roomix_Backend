@@ -71,7 +71,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
-                                                .requestMatchers("/api/houses", "/api/houses/**", "/api/floors", "/api/floors/**")
+                                                .requestMatchers("/api/houses", "/api/houses/**", "/api/floors", "/api/floors/**",
+                                                                "/api/rooms", "/api/rooms/**")
                                                 .hasRole("LANDLORD")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource

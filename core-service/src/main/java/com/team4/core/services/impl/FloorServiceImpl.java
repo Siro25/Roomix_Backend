@@ -82,7 +82,7 @@ public class FloorServiceImpl implements FloorService {
         House house = lockHouseForFloor(landlordId, floorId);
         Floor floor = ownedFloor(landlordId, floorId);
         try {
-            // The room module must reference floors with ON DELETE RESTRICT.
+            // V4 protects existing rooms with rooms.floor_id ON DELETE RESTRICT.
             floors.delete(floor);
             floors.flush();
         } catch (DataIntegrityViolationException exception) {

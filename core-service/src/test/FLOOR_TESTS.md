@@ -29,6 +29,6 @@ mvn -f core-service/pom.xml -Dtest=FloorApiIntegrationTest test
 | Phụ thuộc | Nhà có tầng không được xóa; tầng có bản ghi con tham chiếu không được xóa và transaction rollback |
 | Đồng thời | Tạo khác số/cùng số, đổi hai tầng về cùng số, xóa trùng, tạo tầng đồng thời xóa nhà, PATCH hai trường độc lập |
 
-Module phòng chưa triển khai. Test phụ thuộc dùng bảng **chỉ dành cho test** `test_room_refs` với FK RESTRICT để kiểm tra đường xử lý lỗi xóa tầng. Khi bổ sung migration phòng, bắt buộc có `rooms.floor_id → floors.id ON DELETE RESTRICT`; sau đó bổ sung test với entity phòng thật.
+Test phụ thuộc tại đây dùng bảng **chỉ dành cho test** `test_room_refs` với FK RESTRICT để kiểm tra đường xử lý lỗi xóa tầng. Migration V4 đã bổ sung `rooms.floor_id → floors.id ON DELETE RESTRICT`; `RoomApiIntegrationTest` kiểm tra bổ sung với phòng thật, bao gồm rollback khi xóa tầng có phòng và tạo phòng đồng thời xóa tầng.
 
 H2 ở PostgreSQL mode không thay thế kiểm thử PostgreSQL thực tế, nhất là hành vi khóa và truy cập đồng thời. Bộ test này bao phủ các nhóm trên, không khẳng định bao phủ mọi tổ hợp đầu vào có thể có.
