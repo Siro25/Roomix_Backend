@@ -6,6 +6,7 @@ import com.team4.core.dtos.response.LandlordPropertyResponse;
 import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.entities.User;
 import com.team4.core.enums.Role;
+import com.team4.core.enums.NotificationType;
 import com.team4.core.enums.UserStatus;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
@@ -26,6 +27,7 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 public class AdminUserServiceImpl implements AdminUserService {
+    private static final String USER_ENTITY = "USER";
     private static final String LOCK_USER = "LOCK_USER";
     private static final String UNLOCK_USER = "UNLOCK_USER";
     private static final String APPROVE_LANDLORD = "APPROVE_LANDLORD";
@@ -112,12 +114,15 @@ public class AdminUserServiceImpl implements AdminUserService {
         User landlord = findPendingLandlord(userId);
         auditService.record(
                 REJECT_LANDLORD,
+                USER_ENTITY,
                 landlord.getId(),
                 statusValues(landlord.getStatus()),
                 Map.of("status", landlord.getStatus().name(), "decision", "REJECTED", "reason", reason),
                 context);
         notificationService.send(
                 landlord.getId(),
+                landlord.getId(),
+                NotificationType.SYSTEM,
                 "LANDLORD_REJECTED",
                 "Hồ sơ chủ trọ chưa được duyệt",
                 reason);
@@ -138,11 +143,18 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         auditService.record(
                 action,
+                USER_ENTITY,
                 user.getId(),
                 statusValues(oldStatus),
                 statusValues(newStatus),
                 context);
-        notificationService.send(user.getId(), event, title, content);
+        notificationService.send(
+                user.getId(),
+                user.getId(),
+                NotificationType.SYSTEM,
+                event,
+                title,
+                content);
         return AdminUserResponse.from(user);
     }
 

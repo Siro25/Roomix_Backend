@@ -22,13 +22,19 @@ public class AccountNotificationServiceImpl implements AccountNotificationServic
     private final SimpMessagingTemplate messagingTemplate;
 
     @Override
-    public void send(UUID userId, String event, String title, String content) {
+    public void send(
+            UUID userId,
+            UUID referenceId,
+            NotificationType type,
+            String event,
+            String title,
+            String content) {
         notificationRepository.save(Notification.builder()
                 .userId(userId)
                 .title(title)
                 .content(content)
-                .type(NotificationType.SYSTEM)
-                .referenceId(userId)
+                .type(type)
+                .referenceId(referenceId)
                 .build());
 
         var message = NotificationMessage.builder()

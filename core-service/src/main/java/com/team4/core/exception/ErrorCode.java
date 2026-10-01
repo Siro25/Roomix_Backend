@@ -21,6 +21,9 @@ public enum ErrorCode {
     LANDLORD_REQUIRED(1012, HttpStatus.BAD_REQUEST, "Tài khoản được chọn không phải chủ trọ"),
     LANDLORD_NOT_PENDING(1013, HttpStatus.CONFLICT, "Hồ sơ chủ trọ không ở trạng thái chờ xác minh"),
     ADMIN_ACCOUNT_MANAGEMENT_NOT_ALLOWED(1014, HttpStatus.BAD_REQUEST, "Không quản lý tài khoản Admin tại API này"),
+    POST_NOT_FOUND(1015, HttpStatus.NOT_FOUND, "Không tìm thấy bài đăng"),
+    INVALID_POST_FILTER(1016, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ xem bài đăng đang chờ duyệt"),
+    POST_NOT_PENDING(1017, HttpStatus.CONFLICT, "Bài đăng không ở trạng thái chờ duyệt"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

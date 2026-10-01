@@ -12,13 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class AuditServiceImpl implements AuditService {
-    private static final String USER_ENTITY = "USER";
-
     private final AuditLogRepository auditLogRepository;
 
     @Override
     public void record(
             String action,
+            String entityName,
             UUID entityId,
             Map<String, Object> oldValues,
             Map<String, Object> newValues,
@@ -26,7 +25,7 @@ public class AuditServiceImpl implements AuditService {
         var auditLog = AuditLog.builder()
                 .userId(context.getActorId())
                 .action(action)
-                .entityName(USER_ENTITY)
+                .entityName(entityName)
                 .entityId(entityId.toString())
                 .oldValues(oldValues)
                 .newValues(newValues)
