@@ -1,6 +1,7 @@
 package com.team4.core.dtos.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,10 +14,10 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class AuthResponse {
-    String accessToken;
-    String tokenType;
-    long expiresIn;
-    UserProfileResponse user;
+public class NotificationMessage {
+    String event;
+    UUID userId;
+    String title;
+    String content;
+    Instant createdAt;
 }

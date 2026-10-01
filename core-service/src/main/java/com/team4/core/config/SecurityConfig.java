@@ -3,6 +3,7 @@ package com.team4.core.config;
 import com.team4.core.exception.GlobalExceptionHandler;
 import com.team4.core.repositories.UserRepository;
 import com.team4.core.security.CustomUserDetails;
+import com.team4.core.security.AccountStatusFilter;
 import com.team4.core.security.JwtTokenProvider;
 import java.util.Locale;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -47,6 +49,7 @@ public class SecurityConfig {
         SecurityFilterChain securityFilterChain(
                         HttpSecurity http,
                         JwtTokenProvider tokens,
+                        AccountStatusFilter accountStatusFilter,
                         GlobalExceptionHandler exceptionHandler) throws Exception {
                 var authorities = new JwtGrantedAuthoritiesConverter();
                 authorities.setAuthoritiesClaimName("role");
@@ -74,6 +77,7 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource
                                                 .jwt(jwt -> jwt.decoder(tokens).jwtAuthenticationConverter(converter)))
+                                .addFilterAfter(accountStatusFilter, BearerTokenAuthenticationFilter.class)
                                 .build();
         }
 }

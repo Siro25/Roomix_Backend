@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
                 .role(request.getRole())
-                .status(UserStatus.ACTIVE)
+                .status(initialStatus(request.getRole()))
                 .build();
 
         try {
@@ -52,7 +52,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (DataIntegrityViolationException exception) {
             throw duplicateException(exception);
         }
-        return response(user);
+        return registrationResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +70,22 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(jwtTokenProvider.getExpirationSeconds())
                 .user(UserProfileResponse.from(user))
                 .build();
+    }
+
+    private AuthResponse registrationResponse(User user) {
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            return response(user);
+        }
+        return AuthResponse.builder()
+                .expiresIn(0)
+                .user(UserProfileResponse.from(user))
+                .build();
+    }
+
+    private UserStatus initialStatus(Role role) {
+        return role == Role.LANDLORD
+                ? UserStatus.PENDING_VERIFICATION
+                : UserStatus.ACTIVE;
     }
 
     private void validateUniqueFields(RegisterRequest request) {

@@ -1,16 +1,17 @@
 package com.team4.core.entities;
 
-import com.team4.core.enums.Role;
-import com.team4.core.enums.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,42 +23,42 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "users")
+@Table(name = "houses")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class User {
+public class House {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
-    String username;
+    @Column(name = "landlord_id", nullable = false)
+    UUID landlordId;
 
-    @Column(nullable = false, unique = true, length = 254)
-    String email;
+    @Column(nullable = false, length = 150)
+    String name;
 
-    @Column(name = "password_hash", nullable = false, length = 100)
-    String passwordHash;
+    @Column(name = "address_street", nullable = false, length = 255)
+    String addressStreet;
 
-    @Column(name = "full_name", nullable = false, length = 100)
-    String fullName;
+    @Column(nullable = false, length = 100)
+    String ward;
 
-    @Column(name = "phone_number", nullable = false, length = 20)
-    String phoneNumber;
+    @Column(nullable = false, length = 100)
+    String district;
 
-    @Column(name = "avatar_url", length = 500)
-    String avatarUrl;
+    @Column(nullable = false, length = 100)
+    String city;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    Role role;
+    @Column(name = "total_floors", nullable = false)
+    int totalFloors;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    UserStatus status;
+    @Builder.Default
+    @OneToMany(mappedBy = "house", fetch = FetchType.LAZY)
+    @OrderBy("floorNumber ASC")
+    List<Floor> floors = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -66,8 +67,4 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     Instant updatedAt;
-
-    public void changeStatus(UserStatus newStatus) {
-        status = newStatus;
-    }
 }
