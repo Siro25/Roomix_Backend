@@ -19,7 +19,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.Instant;
 
 @Entity
 @Table(name = "rooms")
@@ -35,21 +39,59 @@ public class Room {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "floor_id", nullable = false)
+    @Setter
     Floor floor;
 
     @Column(name = "room_number", nullable = false, length = 50)
+    @Setter
     String roomNumber;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Setter
+    @Column(precision = 10, scale = 2)
     BigDecimal area;
 
-    @Column(name = "base_price", nullable = false, precision = 15, scale = 2)
+    @Setter
+    @Column(name = "base_price", precision = 15, scale = 2)
     BigDecimal basePrice;
 
+    @Setter
     @Column(name = "max_tenants", nullable = false)
     int maxTenants;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    RoomStatus status;
+    RoomStatus status = RoomStatus.AVAILABLE;
+
+    @Setter
+    @Column(name = "has_private_bathroom", nullable = false)
+    boolean hasPrivateBathroom;
+
+    @Setter
+    @Column(name = "has_air_conditioner", nullable = false)
+    boolean hasAirConditioner;
+
+    @Setter
+    @Column(name = "has_water_heater", nullable = false)
+    boolean hasWaterHeater;
+
+    @Setter
+    @Column(name = "has_balcony", nullable = false)
+    boolean hasBalcony;
+
+    @Setter
+    @Column(name = "amenities_description", columnDefinition = "text")
+    String amenitiesDescription;
+
+    @Builder.Default
+    @Column(name = "is_rented", nullable = false)
+    boolean rented = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    Instant updatedAt;
 }
