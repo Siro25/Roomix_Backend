@@ -18,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -40,25 +41,33 @@ public class Post {
     @Column(name = "room_id", nullable = false)
     UUID roomId;
 
+    @Setter
     @Column(nullable = false, length = 200)
     String title;
 
+    @Setter
     @Column(nullable = false, columnDefinition = "text")
     String description;
 
-    @Column(name = "rental_price", nullable = false, precision = 15, scale = 2)
+    @Setter
+    @Column(name = "rental_price", precision = 15, scale = 2)
     BigDecimal rentalPrice;
 
+    @Setter
     @Column(name = "deposit_amount", nullable = false, precision = 15, scale = 2)
     BigDecimal depositAmount;
 
+    @Setter
     @Column(name = "available_from", nullable = false)
     LocalDate availableFrom;
 
+    @Setter
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    PostStatus status;
+    PostStatus status = PostStatus.DRAFT;
 
+    @Setter
     @Column(name = "reject_reason", columnDefinition = "text")
     String rejectReason;
 
