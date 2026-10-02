@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -25,6 +26,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
         @Bean
         PasswordEncoder passwordEncoder() {
@@ -74,6 +76,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/landlords", "/api/landlords/**")
+                                                .hasRole("LANDLORD")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource
                                                 .jwt(jwt -> jwt.decoder(tokens).jwtAuthenticationConverter(converter)))
