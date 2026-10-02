@@ -2,7 +2,7 @@ package com.team4.core.services.impl;
 
 import com.team4.core.dtos.request.AuditContext;
 import com.team4.core.dtos.response.AdminPostResponse;
-import com.team4.core.dtos.response.AdminPageResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.entities.Post;
 import com.team4.core.enums.NotificationType;
 import com.team4.core.enums.PostStatus;
@@ -33,11 +33,11 @@ public class AdminPostServiceImpl implements AdminPostService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPageResponse<AdminPostResponse> getPendingPosts(PostStatus status, Pageable pageable) {
+    public PageResponse<AdminPostResponse> getPendingPosts(PostStatus status, Pageable pageable) {
         if (status != PostStatus.PENDING) {
             throw new AppException(ErrorCode.INVALID_POST_FILTER);
         }
-        return AdminPageResponse.from(postRepository.findByStatus(status, pageable), AdminPostResponse::from);
+        return PageResponse.from(postRepository.findByStatus(status, pageable), AdminPostResponse::from);
     }
 
     @Override

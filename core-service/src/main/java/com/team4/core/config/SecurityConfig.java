@@ -7,7 +7,6 @@ import com.team4.core.security.AccountStatusFilter;
 import com.team4.core.security.JwtTokenProvider;
 import java.util.Locale;
 import org.springframework.context.annotation.Bean;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,13 +26,6 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 
 @Configuration
 public class SecurityConfig {
-        @Bean
-        FilterRegistrationBean<AccountStatusFilter> accountStatusFilterRegistration(AccountStatusFilter filter) {
-                var registration = new FilterRegistrationBean<>(filter);
-                registration.setEnabled(false); // Run only inside Security, after JWT authentication.
-                return registration;
-        }
-
         @Bean
         PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
@@ -82,9 +74,6 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
-                                                .requestMatchers("/api/houses", "/api/houses/**", "/api/floors", "/api/floors/**",
-                                                                "/api/rooms", "/api/rooms/**")
-                                                .hasRole("LANDLORD")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource
                                                 .jwt(jwt -> jwt.decoder(tokens).jwtAuthenticationConverter(converter)))

@@ -8,9 +8,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -18,8 +16,6 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import tools.jackson.databind.ObjectMapper;
@@ -62,11 +58,6 @@ public class GlobalExceptionHandler implements AuthenticationEntryPoint, AccessD
         return ResponseEntity.status(errorCode.getStatus()).body(body);
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
-    ResponseEntity<ApiResponse<Void>> handleInvalidParameter(Exception exception) {
-        return response(ErrorCode.INVALID_REQUEST);
-    }
-
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(HttpMessageNotReadableException exception) {
         return response(ErrorCode.INVALID_REQUEST);
@@ -74,17 +65,6 @@ public class GlobalExceptionHandler implements AuthenticationEntryPoint, AccessD
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
-        if (exception instanceof ErrorResponse error) {
-            var status = error.getStatusCode();
-            var httpStatus = HttpStatus.resolve(status.value());
-            var body = ApiResponse.<Void>builder()
-                    .code(status.is4xxClientError() ? ErrorCode.INVALID_REQUEST.getCode()
-                            : ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
-                    .message(httpStatus == null ? "HTTP error" : httpStatus.getReasonPhrase())
-                    .build();
-            // Preserve framework status and headers such as Allow (405) and Accept (415).
-            return ResponseEntity.status(status).headers(error.getHeaders()).body(body);
-        }
         log.error("Unhandled application exception", exception);
         return response(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }

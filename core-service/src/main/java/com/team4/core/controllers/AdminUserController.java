@@ -5,7 +5,7 @@ import com.team4.core.dtos.request.LandlordRejectionRequest;
 import com.team4.core.dtos.response.AdminUserResponse;
 import com.team4.core.dtos.response.ApiResponse;
 import com.team4.core.dtos.response.LandlordPropertyResponse;
-import com.team4.core.dtos.response.AdminPageResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.enums.Role;
 import com.team4.core.enums.UserStatus;
 import com.team4.core.services.AdminUserService;
@@ -34,14 +34,14 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public ApiResponse<AdminPageResponse<AdminUserResponse>> search(
+    public ApiResponse<PageResponse<AdminUserResponse>> search(
             @RequestParam Role role,
             @RequestParam(required = false) UserStatus status,
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        AdminPageResponse<AdminUserResponse> response = adminUserService.searchUsers(role, status, keyword, pageable);
-        return ApiResponse.<AdminPageResponse<AdminUserResponse>>builder()
+        PageResponse<AdminUserResponse> response = adminUserService.searchUsers(role, status, keyword, pageable);
+        return ApiResponse.<PageResponse<AdminUserResponse>>builder()
                 .data(response)
                 .message("Thành công")
                 .build();

@@ -12,7 +12,7 @@ spring:
             - id: core-service
               uri: ${CORE_SERVICE_URL:http://localhost:8081}
               predicates:
-                - Path=/api/auth/**,/api/users/**,/api/houses/**,/api/floors/**,/api/rooms/**,/api/favorites/**,/api/admin/**
+                - Path=/api/auth/**,/api/users/**,/api/rooms/**,/api/favorites/**,/api/admin/**
 
             - id: rental-service
               uri: ${RENTAL_SERVICE_URL:http://localhost:8082}

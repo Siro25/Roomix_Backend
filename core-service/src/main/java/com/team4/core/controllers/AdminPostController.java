@@ -4,7 +4,7 @@ import com.team4.core.dtos.request.AuditContext;
 import com.team4.core.dtos.request.PostRejectionRequest;
 import com.team4.core.dtos.response.AdminPostResponse;
 import com.team4.core.dtos.response.ApiResponse;
-import com.team4.core.dtos.response.AdminPageResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.enums.PostStatus;
 import com.team4.core.services.AdminPostService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,12 +31,12 @@ public class AdminPostController {
     private final AdminPostService adminPostService;
 
     @GetMapping
-    public ApiResponse<AdminPageResponse<AdminPostResponse>> getPendingPosts(
+    public ApiResponse<PageResponse<AdminPostResponse>> getPendingPosts(
             @RequestParam(defaultValue = "PENDING") PostStatus status,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        AdminPageResponse<AdminPostResponse> response = adminPostService.getPendingPosts(status, pageable);
-        return ApiResponse.<AdminPageResponse<AdminPostResponse>>builder()
+        PageResponse<AdminPostResponse> response = adminPostService.getPendingPosts(status, pageable);
+        return ApiResponse.<PageResponse<AdminPostResponse>>builder()
                 .message("Lấy danh sách bài chờ duyệt thành công")
                 .data(response)
                 .build();
