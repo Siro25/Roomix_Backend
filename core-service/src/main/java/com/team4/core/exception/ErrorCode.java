@@ -24,6 +24,14 @@ public enum ErrorCode {
     POST_NOT_FOUND(1015, HttpStatus.NOT_FOUND, "Không tìm thấy bài đăng"),
     INVALID_POST_FILTER(1016, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ xem bài đăng đang chờ duyệt"),
     POST_NOT_PENDING(1017, HttpStatus.CONFLICT, "Bài đăng không ở trạng thái chờ duyệt"),
+    FLOOR_NOT_FOUND(1018, HttpStatus.NOT_FOUND, "Không tìm thấy tầng thuộc quyền quản lý của bạn"),
+    ROOM_NOT_FOUND(1019, HttpStatus.NOT_FOUND, "Không tìm thấy phòng thuộc quyền quản lý của bạn"),
+    ROOM_POST_NOT_FOUND(1020, HttpStatus.NOT_FOUND, "Không tìm thấy bài đăng của phòng"),
+    ROOM_UPDATE_NOT_ALLOWED(1021, HttpStatus.CONFLICT, "Chỉ được sửa phòng đang lưu nháp hoặc bị từ chối"),
+    INVALID_POST_STATUS_TRANSITION(1022, HttpStatus.CONFLICT, "Không thể chuyển trạng thái bài đăng theo yêu cầu"),
+    ROOM_SUBMISSION_INCOMPLETE(1023, HttpStatus.BAD_REQUEST, "Phòng cần có giá, diện tích và ít nhất một hình ảnh trước khi gửi duyệt"),
+    INVALID_ROOM_IMAGE(1024, HttpStatus.BAD_REQUEST, "Tệp tải lên phải là hình ảnh hợp lệ"),
+    IMAGE_UPLOAD_FAILED(1025, HttpStatus.BAD_GATEWAY, "Không thể tải hình ảnh lên Cloudinary"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;
