@@ -74,10 +74,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/api/auth/register",
                                                                 "/api/auth/login")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/rooms/**")
+                                                .permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
                                                 .requestMatchers("/api/landlords", "/api/landlords/**")
                                                 .hasRole("LANDLORD")
+                                                .requestMatchers("/api/favorites", "/api/favorites/**")
+                                                .hasRole("TENANT")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(resource -> resource
                                                 .jwt(jwt -> jwt.decoder(tokens).jwtAuthenticationConverter(converter)))

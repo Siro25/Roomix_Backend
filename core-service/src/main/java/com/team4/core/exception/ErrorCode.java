@@ -32,6 +32,11 @@ public enum ErrorCode {
     ROOM_SUBMISSION_INCOMPLETE(1023, HttpStatus.BAD_REQUEST, "Phòng cần có giá, diện tích và ít nhất một hình ảnh trước khi gửi duyệt"),
     INVALID_ROOM_IMAGE(1024, HttpStatus.BAD_REQUEST, "Tệp tải lên phải là hình ảnh hợp lệ"),
     IMAGE_UPLOAD_FAILED(1025, HttpStatus.BAD_GATEWAY, "Không thể tải hình ảnh lên Cloudinary"),
+    ROOM_UNAVAILABLE(1026, HttpStatus.NOT_FOUND, "Phòng không tồn tại hoặc hiện không khả dụng"),
+    INVALID_ROOM_SORT(1027, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ sắp xếp price_asc, price_desc hoặc newest"),
+    INVALID_PRICE_RANGE(1028, HttpStatus.BAD_REQUEST, "Khoảng giá tìm kiếm không hợp lệ"),
+    FAVORITE_ALREADY_EXISTS(1029, HttpStatus.CONFLICT, "Phòng đã có trong danh sách yêu thích"),
+    FAVORITE_NOT_FOUND(1030, HttpStatus.NOT_FOUND, "Không tìm thấy phòng trong danh sách yêu thích"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

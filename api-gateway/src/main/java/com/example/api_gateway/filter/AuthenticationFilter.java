@@ -19,6 +19,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
     private static final String API_PREFIX = "/api/";
     private static final String PUBLIC_AUTH_PREFIX = "/api/auth/";
+    private static final String PUBLIC_ROOM_PREFIX = "/api/rooms/";
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -26,7 +27,9 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
         return "OPTIONS".equalsIgnoreCase(request.getMethod())
                 || !path.startsWith(API_PREFIX)
-                || path.startsWith(PUBLIC_AUTH_PREFIX);
+                || path.startsWith(PUBLIC_AUTH_PREFIX)
+                || ("GET".equalsIgnoreCase(request.getMethod())
+                        && path.startsWith(PUBLIC_ROOM_PREFIX));
     }
 
     @Override
