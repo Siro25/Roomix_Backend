@@ -51,7 +51,15 @@ public class Notification {
     @Column(name = "is_read", nullable = false)
     boolean read = false;
 
+    @Column(name = "read_at")
+    Instant readAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     Instant createdAt;
+
+    public void markAsRead(Instant readAt) {
+        this.read = true;
+        this.readAt = readAt;
+    }
 }

@@ -1,5 +1,6 @@
 package com.team4.core.dtos.response;
 
+import com.team4.core.enums.NotificationType;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -15,9 +16,14 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class NotificationMessage {
+    UUID id;
     String event;
     UUID userId;
     String title;
     String content;
+    NotificationType type;
+    UUID referenceId;
+    boolean read;
+    Instant readAt;
     Instant createdAt;
 }

@@ -37,6 +37,7 @@ public enum ErrorCode {
     INVALID_PRICE_RANGE(1028, HttpStatus.BAD_REQUEST, "Khoảng giá tìm kiếm không hợp lệ"),
     FAVORITE_ALREADY_EXISTS(1029, HttpStatus.CONFLICT, "Phòng đã có trong danh sách yêu thích"),
     FAVORITE_NOT_FOUND(1030, HttpStatus.NOT_FOUND, "Không tìm thấy phòng trong danh sách yêu thích"),
+    NOTIFICATION_NOT_FOUND(1031, HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

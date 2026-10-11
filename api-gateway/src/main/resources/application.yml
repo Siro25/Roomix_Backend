@@ -7,12 +7,17 @@ spring:
   cloud:
     gateway:
       server:
-        webmvc:
+        webflux:
           routes:
+            - id: core-websocket
+              uri: ${CORE_SERVICE_WS_URL:ws://localhost:8081}
+              predicates:
+                - Path=/api/ws,/api/ws/**
+
             - id: core-service
               uri: ${CORE_SERVICE_URL:http://localhost:8081}
               predicates:
-                - Path=/api/auth/**,/api/users/**,/api/rooms/**,/api/favorites/**,/api/admin/**,/api/landlords/**
+                - Path=/api/auth/**,/api/users/**,/api/rooms/**,/api/favorites/**,/api/admin/**,/api/landlords/**,/api/notifications/**
 
             - id: rental-service
               uri: ${RENTAL_SERVICE_URL:http://localhost:8082}

@@ -29,20 +29,26 @@ public class AccountNotificationServiceImpl implements AccountNotificationServic
             String event,
             String title,
             String content) {
-        notificationRepository.save(Notification.builder()
+        Instant createdAt = Instant.now();
+        Notification notification = notificationRepository.save(Notification.builder()
                 .userId(userId)
                 .title(title)
                 .content(content)
                 .type(type)
                 .referenceId(referenceId)
+                .createdAt(createdAt)
                 .build());
 
         var message = NotificationMessage.builder()
+                .id(notification.getId())
                 .event(event)
                 .userId(userId)
                 .title(title)
                 .content(content)
-                .createdAt(Instant.now())
+                .type(type)
+                .referenceId(referenceId)
+                .read(false)
+                .createdAt(createdAt)
                 .build();
 
         publishAfterCommit(userId, message);
