@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any, List
 from app.models.schemas import PricingPredictRequest, PricingPredictResponse, PricingFactorBreakdown
 from app.core.vector_store import vector_store
-from app.core.gemini_client import gemini_client
+from app.core.langchain_components import create_chat_chain
 from app.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,22 @@ ROOM_TYPE_MULTIPLIERS: Dict[str, float] = {
     "O_GHEP": 0.6
 }
 
+PRICING_SYSTEM_PROMPT = (
+    "Bạn là chuyên gia thẩm định giá và tư vấn tối ưu vận hành bất động sản cho thuê "
+    "(phòng trọ, căn hộ mini) tại Việt Nam của nền tảng Roomix."
+)
+
 
 class PricingService:
+    def __init__(self):
+        self._market_analysis_chain = create_chat_chain(
+            system_prompt=PRICING_SYSTEM_PROMPT,
+            fallback_response=(
+                "⚠️ Chưa cấu hình GEMINI_API_KEY. Phần phân tích AI đang ở chế độ giả lập; "
+                "hãy cấu hình khóa Gemini để nhận phân tích thị trường đầy đủ."
+            ),
+        )
+
     def predict_rental_price(self, req: PricingPredictRequest) -> PricingPredictResponse:
         district_key = req.district.strip().lower()
         base_rate = DISTRICT_BASE_RATES.get(district_key, 130000.0)
@@ -154,7 +168,6 @@ class PricingService:
         market_evaluation: str = ""
     ) -> str:
         prompt = f"""
-Bạn là chuyên gia thẩm định giá và tư vấn tối ưu vận hành bất động sản cho thuê (phòng trọ, căn hộ mini) tại Việt Nam của nền tảng Roomix.
 Hãy phân tích cơ hội định giá và chiến lược cho thuê căn phòng sau cho chủ trọ:
 
 THÔNG TIN PHÒNG CỦA CHỦ TRỌ:
@@ -181,8 +194,11 @@ YÊU CẦU ĐẦU RA:
 4. Gợi ý 2-3 nâng cấp chi phí thấp giúp chủ trọ có thể nâng giá thêm 300k - 500k/tháng.
 Viết ngắn gọn, chuyên nghiệp, dùng định dạng Markdown với bullet points rõ ràng.
 """
-        analysis = gemini_client.generate_content(prompt)
-        return analysis
+        try:
+            return self._market_analysis_chain.invoke({"prompt": prompt})
+        except Exception:
+            logger.exception("LangChain market analysis generation failed.")
+            return "Không thể tạo phân tích thị trường lúc này. Vui lòng thử lại sau."
 
     def _evaluate_against_market_data(self, req: PricingPredictRequest, recommended: float) -> str:
         return market_data_service.evaluate_room(

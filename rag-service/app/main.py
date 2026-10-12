@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Roomix RAG Service...")
     # Auto-load sample data on startup if collections are empty
     try:
-        room_count = vector_store.rooms_col.count()
+        room_count = vector_store.count_rooms()
         if room_count == 0:
             logger.info("Vector database is empty. Auto-indexing sample rooms and policies...")
             init_sample_data()
@@ -54,8 +54,8 @@ def health_check():
     return {
         "status": "UP",
         "service": "roomix-rag-service",
-        "vector_db_rooms_count": vector_store.rooms_col.count(),
-        "vector_db_policies_count": vector_store.policies_col.count(),
+        "vector_db_rooms_count": vector_store.count_rooms(),
+        "vector_db_policies_count": vector_store.count_policies(),
     }
 
 

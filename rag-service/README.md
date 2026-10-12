@@ -12,7 +12,7 @@ Hệ thống AI RAG (Retrieval-Augmented Generation) chuyên sâu phục vụ:
 [ Người dùng / Frontend / Gateway (Port 8083) ]
                      │
                      ▼
-          [ FastAPI Application ]
+          [ FastAPI Application + LangChain ]
           /           │          \
          /            │           \
    /chat          /pricing       /ingest
@@ -20,16 +20,16 @@ Hệ thống AI RAG (Retrieval-Augmented Generation) chuyên sâu phục vụ:
          │            │           │
          ▼            ▼           ▼
 ┌────────────────────────────────────────────────────────┐
-│             ChromaDB Vector Store                      │
+│          LangChain Chroma Vector Stores                │
 │ - roomix_rooms: Lập chỉ mục thông tin & tiện ích phòng │
 │ - roomix_policies: Bộ luật nhà ở & chính sách cọc/thuê │
 └────────────────────────────────────────────────────────┘
                      │
                      ▼
 ┌────────────────────────────────────────────────────────┐
-│             Google Gemini AI Engine                   │
-│ - Gemini 1.5 / 2.0 Flash: Tạo câu trả lời & Phân tích  │
-│ - text-embedding-004: Vector hóa câu hỏi & phòng trọ   │
+│      LangChain Google GenAI Integration               │
+│ - ChatGoogleGenerativeAI: trả lời & phân tích         │
+│ - GoogleGenerativeAIEmbeddings: tạo vector            │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -171,18 +171,20 @@ Dành cho `rental-service` hoặc admin khi có phòng trọ mới được duy�
 rag-service/
 ├── app/
 │   ├── api/                       # FastAPI endpoints
-│   ├── core/                      # Gemini client và ChromaDB
+│   ├── core/                      # LangChain models, embeddings, Chroma vector stores
 │   └── services/                  # Nghiệp vụ chat, định giá, đánh giá thị trường
 ├── data/market/                   # CSV thị trường đầu vào của MarketEvaluator
 └── scripts/
     └── crawlers/                  # Công cụ thu thập dữ liệu chạy độc lập
 ```
 
-ChromaDB là vector store duy nhất của service. Thông tin phòng và chính sách được lưu trong các collection riêng; `MarketEvaluator` đọc CSV để phân tích giá, không dùng thêm vector store.
+RAG chạy qua LangChain: `GoogleGenerativeAIEmbeddings` tạo embedding, `langchain-chroma` ghi và truy xuất collection Chroma, còn `ChatGoogleGenerativeAI` tạo câu trả lời chat và phân tích định giá. ChromaDB là vector store duy nhất; dữ liệu phòng và chính sách vẫn nằm ở hai collection riêng. `MarketEvaluator` tiếp tục dùng CSV để tính thống kê giá, không phải một vector store.
+
+Các bản ghi phòng và chính sách được chuyển thành LangChain `Document`. Chúng đã có cấu trúc rõ ràng nên không cần chia nhỏ bằng text splitter. Khi chưa cấu hình `GEMINI_API_KEY`, LangChain dùng embedding và chat model giả lập dành cho môi trường phát triển; chúng không thay thế kết quả AI khi triển khai thật.
 
 | File nguồn | Vị trí/trách nhiệm trong service |
 | --- | --- |
-| `chatbot.py` | Luồng chatbot API đã có tại `app/api/routes_chat.py` và `app/services/rag_chat_service.py`. Script CLI cũ dựng index và chờ `input()` ngay khi import nên không được chép nguyên trạng vào app. |
+| `chatbot.py` | Luồng chatbot API tại `app/api/routes_chat.py` và `app/services/rag_chat_service.py`; retrieval dùng LangChain Chroma và câu trả lời đi qua LangChain LCEL. Script CLI cũ dựng index và chờ `input()` ngay khi import nên không được chép nguyên trạng vào app. |
 | `market_evaluator.py` | `app/services/market_evaluator.py`; `market_data_service.py` dùng nó cho phần so sánh giá ở chatbot và API định giá nếu cấu hình `MARKET_DATA_CSV`. |
 | `tool/tool.py` | `scripts/crawlers/phongtro123_hanoi.py`; chạy thủ công, không chạy cùng FastAPI. |
 

@@ -1,87 +1,95 @@
-import os
 import json
 import logging
-from typing import List, Dict, Any, Optional
-import chromadb
-from chromadb.config import Settings as ChromaSettings
+import os
+from typing import Any, Optional
+
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+
 from app.config import settings
-from app.core.gemini_client import gemini_client
+from app.core.langchain_components import embeddings
 from app.models.schemas import RoomItem
 
 logger = logging.getLogger(__name__)
 
+
 class VectorStoreManager:
+    """Room and policy retrieval backed by LangChain's Chroma integration."""
+
     def __init__(self):
         os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
-        self.client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIRECTORY,
-            settings=ChromaSettings(anonymized_telemetry=False)
+        self.rooms = Chroma(
+            collection_name="roomix_rooms",
+            embedding_function=embeddings,
+            persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
         )
-        self.rooms_col = self.client.get_or_create_collection(
-            name="roomix_rooms",
-            metadata={"description": "Vector store for rental room listings"}
+        self.policies = Chroma(
+            collection_name="roomix_policies",
+            embedding_function=embeddings,
+            persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
         )
-        self.policies_col = self.client.get_or_create_collection(
-            name="roomix_policies",
-            metadata={"description": "Vector store for tenancy policies, contracts, and regulations"}
-        )
-        logger.info("ChromaDB vector store initialized successfully.")
+        logger.info("LangChain Chroma vector stores initialized successfully.")
+
+    def count_rooms(self) -> int:
+        return len(self.rooms.get(include=[]).get("ids", []))
+
+    def count_policies(self) -> int:
+        return len(self.policies.get(include=[]).get("ids", []))
 
     def format_room_text(self, room: RoomItem) -> str:
-        amenities_str = ", ".join(room.amenities) if room.amenities else "Cơ bản"
-        rules_str = ", ".join(room.rules) if room.rules else "Không có nội quy đặc biệt"
-        text = (
-            f"Phòng: {room.title}\n"
-            f"Loại hình: {room.room_type}\n"
-            f"Địa chỉ: {room.address}, {room.ward}, {room.district}, {room.city}\n"
-            f"Diện tích: {room.area_sqm} m2\n"
-            f"Giá thuê: {room.price:,.0f} VND/tháng\n"
-            f"Tiền cọc: {room.deposit:,.0f} VND\n" if room.deposit else ""
-            f"Điện: {room.electricity_cost:,.0f} VND/số, Nước: {room.water_cost:,.0f} VND\n" if room.electricity_cost else ""
-            f"Tiện nghi: {amenities_str}\n"
-            f"Nội quy: {rules_str}\n"
-            f"Mô tả: {room.description}\n"
-            f"Chủ trọ: {room.landlord_name} - SĐT: {room.contact_phone}"
-        )
-        return text
+        amenities = ", ".join(room.amenities) if room.amenities else "Cơ bản"
+        rules = ", ".join(room.rules) if room.rules else "Không có nội quy đặc biệt"
+        lines = [
+            f"Phòng: {room.title}",
+            f"Loại hình: {room.room_type}",
+            f"Địa chỉ: {room.address}, {room.ward}, {room.district}, {room.city}",
+            f"Diện tích: {room.area_sqm} m2",
+            f"Giá thuê: {room.price:,.0f} VND/tháng",
+        ]
+        if room.deposit is not None:
+            lines.append(f"Tiền cọc: {room.deposit:,.0f} VND")
+        if room.electricity_cost is not None:
+            lines.append(f"Tiền điện: {room.electricity_cost:,.0f} VND/số")
+        if room.water_cost is not None:
+            lines.append(f"Tiền nước: {room.water_cost:,.0f} VND")
+        lines.extend([
+            f"Tiện nghi: {amenities}",
+            f"Nội quy: {rules}",
+            f"Mô tả: {room.description or ''}",
+            f"Chủ trọ: {room.landlord_name or ''} - SĐT: {room.contact_phone or ''}",
+        ])
+        return "\n".join(lines)
 
-    def add_rooms(self, rooms: List[RoomItem]):
+    def add_rooms(self, rooms: list[RoomItem]) -> int:
         if not rooms:
             return 0
+
         documents = []
-        embeddings = []
-        metadatas = []
         ids = []
+        for room in rooms:
+            room_id = str(room.id)
+            documents.append(Document(
+                id=room_id,
+                page_content=self.format_room_text(room),
+                metadata={
+                    "id": room_id,
+                    "title": room.title,
+                    "city": room.city,
+                    "district": room.district,
+                    "ward": room.ward or "",
+                    "room_type": room.room_type,
+                    "price": float(room.price),
+                    "area_sqm": float(room.area_sqm),
+                    "contact_phone": room.contact_phone or "",
+                    "landlord_name": room.landlord_name or "",
+                    "amenities": json.dumps(room.amenities or [], ensure_ascii=False),
+                    "available": "true" if room.available else "false",
+                },
+            ))
+            ids.append(room_id)
 
-        for r in rooms:
-            doc_text = self.format_room_text(r)
-            emb = gemini_client.get_embedding(doc_text, task_type="retrieval_document")
-            meta = {
-                "id": str(r.id),
-                "title": r.title,
-                "city": r.city,
-                "district": r.district,
-                "ward": r.ward or "",
-                "room_type": r.room_type,
-                "price": float(r.price),
-                "area_sqm": float(r.area_sqm),
-                "contact_phone": r.contact_phone or "",
-                "landlord_name": r.landlord_name or "",
-                "amenities": json.dumps(r.amenities or []),
-                "available": "true" if r.available else "false"
-            }
-            documents.append(doc_text)
-            embeddings.append(emb)
-            metadatas.append(meta)
-            ids.append(str(r.id))
-
-        self.rooms_col.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
-        )
-        logger.info(f"Indexed {len(rooms)} rooms into vector store.")
+        self.rooms.add_documents(documents=documents, ids=ids)
+        logger.info("Indexed %s rooms through LangChain into Chroma.", len(rooms))
         return len(rooms)
 
     def search_rooms(
@@ -92,97 +100,78 @@ class VectorStoreManager:
         district: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
-        room_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        query_emb = gemini_client.get_embedding(query, task_type="retrieval_query")
-
-        # Build Chroma where filters
-        where_clauses = []
+        room_type: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        filters: list[dict[str, Any]] = []
         if city:
-            where_clauses.append({"city": {"$eq": city}})
+            filters.append({"city": {"$eq": city}})
         if district:
-            where_clauses.append({"district": {"$eq": district}})
+            filters.append({"district": {"$eq": district}})
         if room_type:
-            where_clauses.append({"room_type": {"$eq": room_type}})
+            filters.append({"room_type": {"$eq": room_type}})
         if min_price is not None:
-            where_clauses.append({"price": {"$gte": float(min_price)}})
+            filters.append({"price": {"$gte": float(min_price)}})
         if max_price is not None:
-            where_clauses.append({"price": {"$lte": float(max_price)}})
+            filters.append({"price": {"$lte": float(max_price)}})
 
-        where = None
-        if len(where_clauses) == 1:
-            where = where_clauses[0]
-        elif len(where_clauses) > 1:
-            where = {"$and": where_clauses}
+        metadata_filter = None
+        if len(filters) == 1:
+            metadata_filter = filters[0]
+        elif filters:
+            metadata_filter = {"$and": filters}
 
-        try:
-            results = self.rooms_col.query(
-                query_embeddings=[query_emb],
-                n_results=n_results,
-                where=where
-            )
-        except Exception as e:
-            logger.warning(f"Filtered query failed ({e}), falling back to unfiltered query.")
-            results = self.rooms_col.query(
-                query_embeddings=[query_emb],
-                n_results=n_results
-            )
+        results = self.rooms.similarity_search_with_score(
+            query,
+            k=n_results,
+            filter=metadata_filter,
+        )
+        return [
+            {
+                "id": document.metadata.get("id") or document.id,
+                "document": document.page_content,
+                "metadata": document.metadata,
+                "distance": score,
+            }
+            for document, score in results
+        ]
 
-        matched = []
-        if results and results.get("ids") and len(results["ids"]) > 0:
-            count = len(results["ids"][0])
-            for i in range(count):
-                matched.append({
-                    "id": results["ids"][0][i],
-                    "document": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i],
-                    "distance": results["distances"][0][i] if "distances" in results and results["distances"] else None
-                })
-        return matched
-
-    def add_policy_documents(self, docs: List[Dict[str, Any]]):
+    def add_policy_documents(self, docs: list[dict[str, Any]]) -> int:
         if not docs:
             return 0
-        ids = []
+
         documents = []
-        embeddings = []
-        metadatas = []
+        ids = []
+        for doc in docs:
+            doc_id = str(doc.get("id", ""))
+            documents.append(Document(
+                id=doc_id,
+                page_content=(
+                    f"Tiêu đề: {doc.get('title', '')}\n"
+                    f"Chủ đề: {doc.get('category', '')}\n"
+                    f"Nội dung: {doc.get('content', '')}"
+                ),
+                metadata={
+                    "id": doc_id,
+                    "title": doc.get("title", ""),
+                    "category": doc.get("category", ""),
+                },
+            ))
+            ids.append(doc_id)
 
-        for d in docs:
-            text = f"Tiêu đề: {d.get('title')}\nChủ đề: {d.get('category')}\nNội dung: {d.get('content')}"
-            emb = gemini_client.get_embedding(text, task_type="retrieval_document")
-            ids.append(d.get("id"))
-            documents.append(text)
-            embeddings.append(emb)
-            metadatas.append({
-                "title": d.get("title", ""),
-                "category": d.get("category", "")
-            })
+        self.policies.add_documents(documents=documents, ids=ids)
+        return len(documents)
 
-        self.policies_col.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
-        )
-        return len(docs)
-
-    def search_policies(self, query: str, n_results: int = 3) -> List[Dict[str, Any]]:
-        query_emb = gemini_client.get_embedding(query, task_type="retrieval_query")
-        results = self.policies_col.query(
-            query_embeddings=[query_emb],
-            n_results=n_results
-        )
-        matched = []
-        if results and results.get("ids") and len(results["ids"]) > 0:
-            count = len(results["ids"][0])
-            for i in range(count):
-                matched.append({
-                    "id": results["ids"][0][i],
-                    "document": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i]
-                })
-        return matched
+    def search_policies(self, query: str, n_results: int = 3) -> list[dict[str, Any]]:
+        results = self.policies.similarity_search_with_score(query, k=n_results)
+        return [
+            {
+                "id": document.metadata.get("id") or document.id,
+                "document": document.page_content,
+                "metadata": document.metadata,
+                "distance": score,
+            }
+            for document, score in results
+        ]
 
 
 vector_store = VectorStoreManager()

@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 from app.models.schemas import ChatRequest, ChatResponse
 from app.core.vector_store import vector_store
-from app.core.gemini_client import gemini_client
+from app.core.langchain_components import create_chat_chain
 from app.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,15 @@ NGUYÊN TẮC QUAN TRỌNG:
 """
 
 class RagChatService:
+    def __init__(self):
+        self._answer_chain = create_chat_chain(
+            system_prompt=SYSTEM_PROMPT,
+            fallback_response=(
+                "⚠️ Chưa cấu hình GEMINI_API_KEY. Hệ thống đang chạy bằng mô hình giả lập "
+                "LangChain; hãy cấu hình khóa Gemini để nhận câu trả lời AI đầy đủ."
+            ),
+        )
+
     def process_chat(self, req: ChatRequest) -> ChatResponse:
         user_query = req.message
         filters = req.filters
@@ -120,7 +129,7 @@ class RagChatService:
 Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh trên:
 """
 
-        answer = gemini_client.generate_content(prompt, system_instruction=SYSTEM_PROMPT)
+        answer = self._generate_answer(prompt)
 
         # 5. Dynamic follow-ups
         follow_ups = self._generate_suggested_follow_ups(user_query, matched_rooms_data)
@@ -131,6 +140,13 @@ Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh t
             source_documents=source_docs,
             suggested_follow_ups=follow_ups
         )
+
+    def _generate_answer(self, prompt: str) -> str:
+        try:
+            return self._answer_chain.invoke({"prompt": prompt})
+        except Exception:
+            logger.exception("LangChain answer generation failed.")
+            return "Xin lỗi, hiện chưa thể tạo câu trả lời. Vui lòng thử lại sau."
 
     def _generate_suggested_follow_ups(self, query: str, matched_rooms: List[Dict[str, Any]]) -> List[str]:
         q_lower = query.lower()
