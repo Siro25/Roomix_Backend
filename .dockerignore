@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.vscode
+**/target
+**/*.iml
+**/.classpath
+**/.project
+**/.settings
+outputs
+work
+*.log
