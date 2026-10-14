@@ -47,6 +47,9 @@ public class Invoice {
     @Column(nullable = false, length = 20)
     private InvoiceStatus status;
 
+    @Column(nullable = false)
+    private int revision;
+
     @Column(name = "is_disputed", nullable = false)
     private boolean disputed;
 
