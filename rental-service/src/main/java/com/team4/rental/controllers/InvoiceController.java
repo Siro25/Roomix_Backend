@@ -3,6 +3,7 @@ package com.team4.rental.controllers;
 import com.team4.rental.dtos.request.*;
 import com.team4.rental.dtos.response.*;
 import com.team4.rental.entities.*;
+import com.team4.rental.enums.InvoiceStatus;
 import com.team4.rental.services.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -30,11 +31,16 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public ApiResponse<Page<Invoice>> list(@AuthenticationPrincipal Jwt jwt,
+    public ApiResponse<Page<InvoiceSummaryResponse>> list(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) UUID roomId,
+            @RequestParam(required = false) UUID tenancyId,
+            @RequestParam(required = false) @Pattern(regexp = "[0-9]{4}-(0[1-9]|1[0-2])") String billingMonth,
+            @RequestParam(required = false) Boolean overdue,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.<Page<Invoice>>builder().data(invoiceService.list(
-                UUID.fromString(jwt.getSubject()), PageRequest.of(page, size,
+        return ApiResponse.<Page<InvoiceSummaryResponse>>builder().data(invoiceService.list(
+                UUID.fromString(jwt.getSubject()), status, roomId, tenancyId, billingMonth, overdue, PageRequest.of(page, size,
                         Sort.by("createdAt").descending().and(Sort.by("id"))))).build();
     }
 

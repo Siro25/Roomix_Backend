@@ -2,6 +2,7 @@ package com.team4.rental.services.impl;
 
 import com.team4.rental.dtos.request.*;
 import com.team4.rental.dtos.response.InvoiceDetailResponse;
+import com.team4.rental.dtos.response.InvoiceSummaryResponse;
 import com.team4.rental.entities.*;
 import com.team4.rental.enums.*;
 import com.team4.rental.exceptions.*;
@@ -25,6 +26,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final MeterReadingRepository meterReadings;
     private final InvoiceRepository invoices;
     private final InvoiceItemRepository invoiceItems;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -47,14 +49,14 @@ public class InvoiceServiceImpl implements InvoiceService {
         var previous = meterReadings.findFirstByTenancyIdOrderByBillingMonthDesc(tenancy.getId());
         YearMonth nextMonth = previous.map(reading -> YearMonth.parse(reading.getBillingMonth()).plusMonths(1))
                 .orElse(YearMonth.from(tenancy.getStartDate()));
-        if (!billingMonth.equals(nextMonth) || billingMonth.isAfter(YearMonth.now())
+        if (!billingMonth.equals(nextMonth) || billingMonth.isAfter(YearMonth.now(clock))
                 || billingMonth.isAfter(YearMonth.from(tenancy.getEndDate()))) {
             throw new AppException(ErrorCode.INVALID_BILLING_MONTH);
         }
         if (!YearMonth.from(request.getReadingDate()).equals(billingMonth)
                 || request.getReadingDate().isBefore(tenancy.getStartDate())
                 || request.getReadingDate().isAfter(tenancy.getEndDate())
-                || request.getReadingDate().isAfter(LocalDate.now())
+                || request.getReadingDate().isAfter(LocalDate.now(clock))
                 || request.getDueDate().isBefore(request.getReadingDate())) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
@@ -97,13 +99,25 @@ public class InvoiceServiceImpl implements InvoiceService {
                 InvoiceItem.builder().invoiceId(invoice.getId()).itemName("Tiền nước")
                         .itemType(InvoiceItemType.WATER).quantity(waterUsage)
                         .unitPrice(tenancy.getWaterUnitPrice()).totalPrice(waterAmount).build()));
-        return InvoiceDetailResponse.builder().invoice(invoice).meterReading(reading).items(items).build();
+        return InvoiceDetailResponse.builder().invoice(invoice).meterReading(reading).items(items)
+                .overdue(invoice.getDueDate().isBefore(LocalDate.now(clock)))
+                .outstandingAmount(total).build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Invoice> list(UUID userId, Pageable pageable) {
-        return invoices.findVisible(userId, pageable);
+    public Page<InvoiceSummaryResponse> list(UUID userId, InvoiceStatus status, UUID roomId, UUID tenancyId,
+                                            String billingMonth, Boolean overdue, Pageable pageable) {
+        LocalDate today = LocalDate.now(clock);
+        return invoices.searchVisible(userId, status, roomId, tenancyId, billingMonth, overdue, today, pageable)
+                .map(invoice -> InvoiceSummaryResponse.builder()
+                        .id(invoice.getId()).invoiceCode(invoice.getInvoiceCode()).tenancyId(invoice.getTenancyId())
+                        .billingMonth(invoice.getBillingMonth()).dueDate(invoice.getDueDate()).status(invoice.getStatus())
+                        .totalAmount(invoice.getTotalAmount()).paidAmount(invoice.getPaidAmount())
+                        .outstandingAmount(invoice.getTotalAmount().subtract(invoice.getPaidAmount()))
+                        .overdue(invoice.getDueDate().isBefore(today)
+                                && invoice.getPaidAmount().compareTo(invoice.getTotalAmount()) < 0)
+                        .disputed(invoice.isDisputed()).build());
     }
 
     @Override
@@ -114,6 +128,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         var reading = meterReadings.findById(invoice.getMeterReadingId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         return InvoiceDetailResponse.builder().invoice(invoice).meterReading(reading)
+                .overdue(invoice.getDueDate().isBefore(LocalDate.now(clock))
+                        && invoice.getPaidAmount().compareTo(invoice.getTotalAmount()) < 0)
+                .outstandingAmount(invoice.getTotalAmount().subtract(invoice.getPaidAmount()))
                 .items(invoiceItems.findByInvoiceIdOrderByItemType(invoiceId)).build();
     }
 
@@ -137,7 +154,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new AppException(ErrorCode.INVALID_STATE);
         }
         invoice.setStatus(InvoiceStatus.CONFIRMED);
-        invoice.setConfirmedAt(Instant.now());
+        invoice.setConfirmedAt(clock.instant());
         return invoices.save(invoice);
     }
 
@@ -160,7 +177,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setStatus(InvoiceStatus.PAID);
         invoice.setPaidAmount(invoice.getTotalAmount());
         invoice.setPaymentMethod(request.getPaymentMethod());
-        invoice.setPaymentDate(Instant.now());
+        invoice.setPaymentDate(clock.instant());
         return invoices.save(invoice);
     }
 
