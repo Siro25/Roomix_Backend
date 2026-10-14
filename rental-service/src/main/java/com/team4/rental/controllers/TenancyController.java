@@ -3,6 +3,7 @@ package com.team4.rental.controllers;
 import com.team4.rental.dtos.request.*;
 import com.team4.rental.dtos.response.*;
 import com.team4.rental.entities.*;
+import com.team4.rental.enums.TenancyStatus;
 import com.team4.rental.services.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -22,10 +23,12 @@ public class TenancyController {
 
     @GetMapping
     public ApiResponse<Page<Tenancy>> list(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) TenancyStatus status,
+            @RequestParam(required = false) UUID roomId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.<Page<Tenancy>>builder().data(tenancyService.list(
-                UUID.fromString(jwt.getSubject()), jwt.getClaimAsString("role"),
+                UUID.fromString(jwt.getSubject()), status, roomId,
                 PageRequest.of(page, size, Sort.by("createdAt").descending().and(Sort.by("id"))))).build();
     }
 
