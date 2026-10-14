@@ -2,6 +2,17 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
+#Cung cấp các schema dữ liệu cho các request và response của API, bao gồm:
+# - ChatMessage: đại diện cho một tin nhắn trong cuộc trò chuyện
+# - SearchFilters: các bộ lọc tìm kiếm phòng trọ
+# - ChatRequest: request từ người dùng để chat với RAG
+# - RoomItem: thông tin chi tiết về một phòng trọ
+# - ChatResponse: response từ RAG sau khi xử lý chat
+# - IngestRoomsRequest: request để ingest dữ liệu phòng trọ vào hệ thống
+# - IngestResponse: response sau khi ingest dữ liệu phòng trọ
+# - PricingPredictRequest: request để dự đoán giá thuê phòng trọ
+# - PricingPredictResponse: response chứa kết quả dự đoán giá thuê và phân tích thị trường
+# - PricingFactorBreakdown: phân tích các yếu tố ảnh hưởng đến giá thuê 
 class ChatMessage(BaseModel):
     role: str = Field(..., description="'user', 'assistant' or 'system'")
     content: str
@@ -24,7 +35,7 @@ class ChatRequest(BaseModel):
     user_role: Optional[str] = Field("TENANT", description="TENANT hoặc LANDLORD")
     filters: Optional[SearchFilters] = None
 
-
+# Thông tin chi tiết về một phòng trọ 
 class RoomItem(BaseModel):
     id: str
     title: str

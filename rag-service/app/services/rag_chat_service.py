@@ -1,12 +1,11 @@
 import json
-import logging
 from typing import List, Dict, Any
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from app.models.schemas import ChatRequest, ChatResponse
 from app.core.vector_store import vector_store
-from app.core.langchain_components import create_chat_chain
+from app.core.gemini_client import gemini_client
 from app.services.market_data_service import market_data_service
-
-logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """
 Bạn là "Roomix AI" - Trợ lý thông minh độc quyền của nền tảng tìm kiếm và quản lý phòng trọ Roomix tại Việt Nam.
@@ -23,15 +22,30 @@ NGUYÊN TẮC QUAN TRỌNG:
 - Sử dụng Markdown gọn gàng, định dạng giá tiền rõ ràng (ví dụ: 3.500.000 đ/tháng).
 """
 
+CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_PROMPT),
+    MessagesPlaceholder("history"),
+    ("human", """
+[NGỮ CẢNH DỮ LIỆU PHÒNG TRỌ ROOMIX KHẢ DỤNG]:
+{rooms_context}
+
+[ĐÁNH GIÁ GIÁ THỊ TRƯỜNG TỪ CSV]:
+{market_context}
+
+[NGỮ CẢNH QUY ĐỊNH & PHÁP LÝ LIÊN QUAN]:
+{policies_context}
+
+[VAI TRÒ NGƯỜI DÙNG]: {user_role}
+[CÂU HỎI HIỆN TẠI]: {question}
+
+Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh trên:
+"""),
+])
+
+
 class RagChatService:
     def __init__(self):
-        self._answer_chain = create_chat_chain(
-            system_prompt=SYSTEM_PROMPT,
-            fallback_response=(
-                "⚠️ Chưa cấu hình GEMINI_API_KEY. Hệ thống đang chạy bằng mô hình giả lập "
-                "LangChain; hãy cấu hình khóa Gemini để nhận câu trả lời AI đầy đủ."
-            ),
-        )
+        self.chain = gemini_client.create_chain(CHAT_PROMPT)
 
     def process_chat(self, req: ChatRequest) -> ChatResponse:
         user_query = req.message
@@ -74,8 +88,6 @@ class RagChatService:
                 price=meta.get("price"),
                 district=meta.get("district", ""),
                 amenities=amenities,
-                area_sqm=meta.get("area_sqm"),
-                title=meta.get("title", ""),
             )
             if market_evaluation:
                 market_context_parts.append(f"{meta.get('title', 'Phòng trọ')}:\n{market_evaluation}")
@@ -103,33 +115,20 @@ class RagChatService:
             if title:
                 source_docs.append(title)
 
-        # 4. Build Full Prompt with History
-        history_str = ""
-        if req.conversation_history:
-            for msg in req.conversation_history[-6:]:
-                role_label = "Khách hàng" if msg.role == "user" else "Roomix AI"
-                history_str += f"{role_label}: {msg.content}\n"
-
-        prompt = f"""
-[LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ]:
-{history_str if history_str else "Chưa có"}
-
-[NGỮ CẢNH DỮ LIỆU PHÒNG TRỌ ROOMIX KHẢ DỤNG]:
-{rooms_context if rooms_context else "Hiện không tìm thấy phòng trọ nào khớp trong bộ lọc."}
-
-[ĐÁNH GIÁ GIÁ THỊ TRƯỜNG TỪ CSV]:
-{market_context if market_context else "Chưa có dữ liệu CSV thị trường để đánh giá."}
-
-[NGỮ CẢNH QUY ĐỊNH & PHÁP LÝ LIÊN QUAN]:
-{policies_context if policies_context else "Không có điều khoản đặc thù."}
-
-[VAI TRÒ NGƯỜI DÙNG]: {req.user_role}
-[CÂU HỎI HIỆN TẠI]: {user_query}
-
-Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh trên:
-"""
-
-        answer = self._generate_answer(prompt)
+        # 4. Preserve message roles and invoke the LangChain prompt/model/parser chain.
+        history = [
+            HumanMessage(content=msg.content) if msg.role == "user"
+            else AIMessage(content=msg.content)
+            for msg in (req.conversation_history or [])[-6:]
+        ]
+        answer = self.chain.invoke({
+            "history": history,
+            "rooms_context": rooms_context or "Hiện không tìm thấy phòng trọ nào khớp trong bộ lọc.",
+            "market_context": market_context or "Chưa có dữ liệu CSV thị trường để đánh giá.",
+            "policies_context": policies_context or "Không có điều khoản đặc thù.",
+            "user_role": req.user_role,
+            "question": user_query,
+        })
 
         # 5. Dynamic follow-ups
         follow_ups = self._generate_suggested_follow_ups(user_query, matched_rooms_data)
@@ -140,13 +139,6 @@ Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh t
             source_documents=source_docs,
             suggested_follow_ups=follow_ups
         )
-
-    def _generate_answer(self, prompt: str) -> str:
-        try:
-            return self._answer_chain.invoke({"prompt": prompt})
-        except Exception:
-            logger.exception("LangChain answer generation failed.")
-            return "Xin lỗi, hiện chưa thể tạo câu trả lời. Vui lòng thử lại sau."
 
     def _generate_suggested_follow_ups(self, query: str, matched_rooms: List[Dict[str, Any]]) -> List[str]:
         q_lower = query.lower()

@@ -1,4 +1,4 @@
-# Roomix RAG Service 🏠🤖
+# Roomix RAG Service — LangChain
 
 Hệ thống AI RAG (Retrieval-Augmented Generation) chuyên sâu phục vụ:
 1. **Phân tích dự đoán & gợi ý định giá phòng cho chủ trọ** dựa trên vị trí, diện tích, tiện ích và thị trường cạnh tranh.
@@ -12,7 +12,7 @@ Hệ thống AI RAG (Retrieval-Augmented Generation) chuyên sâu phục vụ:
 [ Người dùng / Frontend / Gateway (Port 8083) ]
                      │
                      ▼
-          [ FastAPI Application + LangChain ]
+          [ FastAPI Application ]
           /           │          \
          /            │           \
    /chat          /pricing       /ingest
@@ -20,18 +20,83 @@ Hệ thống AI RAG (Retrieval-Augmented Generation) chuyên sâu phục vụ:
          │            │           │
          ▼            ▼           ▼
 ┌────────────────────────────────────────────────────────┐
-│          LangChain Chroma Vector Stores                │
-│ - roomix_rooms: Lập chỉ mục thông tin & tiện ích phòng │
-│ - roomix_policies: Bộ luật nhà ở & chính sách cọc/thuê │
+│             ChromaDB Vector Store                      │
+│ - *_rooms: Lập chỉ mục thông tin & tiện ích phòng      │
+│ - *_policies: Nội dung chính sách cọc/thuê mẫu          │
 └────────────────────────────────────────────────────────┘
                      │
                      ▼
 ┌────────────────────────────────────────────────────────┐
-│      LangChain Google GenAI Integration               │
-│ - ChatGoogleGenerativeAI: trả lời & phân tích         │
-│ - GoogleGenerativeAIEmbeddings: tạo vector            │
+│           LangChain + Google Gemini                   │
+│ - ChatGoogleGenerativeAI: Tạo câu trả lời, phân tích   │
+│ - GoogleGenerativeAIEmbeddings: Vector hóa văn bản    │
 └────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Luồng LangChain
+
+Service dùng `langchain-core`, `langchain-google-genai` và `langchain-chroma`.
+Không cần cài gói tổng `langchain` hoặc cấu hình LangSmith để chạy.
+
+- `app/core/gemini_client.py`: khởi tạo `ChatGoogleGenerativeAI` và
+  `GoogleGenerativeAIEmbeddings` từ các biến `GEMINI_*` trong `.env`.
+- `app/core/vector_store.py`: chuyển phòng/quy định thành `Document`, gọi
+  `Chroma.add_documents()` với ID cố định để thêm/cập nhật. Phòng được tìm bằng
+  `similarity_search_with_score()` cùng metadata filter; quy định dùng
+  `as_retriever().invoke()`.
+- `app/services/rag_chat_service.py`: lấy tối đa 4 phòng, 2 quy định, thêm nhận xét
+  CSV nếu có; đưa 6 tin nhắn gần nhất vào `MessagesPlaceholder`, rồi gọi chuỗi
+  `ChatPromptTemplate | ChatGoogleGenerativeAI | StrOutputParser`.
+- `pricing_service.py`: giữ công thức tính giá hiện có; phần nhận xét gọi trực tiếp
+  `self.chain.invoke()` với chuỗi prompt/model/parser như chatbot.
+  Giá đề xuất không phải kết quả của mô hình học máy.
+
+API và cấu trúc request/response giữ nguyên. Bộ lọc vị trí/giá/loại phòng vẫn cần
+được gửi trong `filters`; LangChain không tự trích xuất chúng từ câu hỏi.
+
+### Chuyển từ chỉ mục cũ
+
+Bản LangChain dùng collection mới trong `CHROMA_PERSIST_DIRECTORY`:
+
+- `roomix_lc_v1_google_<hash-model>_rooms` và collection `_policies`.
+- API key là bắt buộc; ứng dụng không còn model hoặc embedding giả lập.
+
+Các collection cũ `roomix_rooms` / `roomix_policies` không bị xóa hay tự chuyển.
+Cần tạo lại embedding vì phiên bản trước có thể chứa vector giả lập và văn bản
+phòng bị thiếu trường. Khi chuyển sang API key thật hoặc đổi embedding model,
+service cũng sử dụng chỉ mục riêng, tránh trộn các không gian vector.
+
+Lần đầu chạy với chỉ mục rỗng, service tự nạp dữ liệu mẫu. Nếu có phòng thực tế,
+gửi lại danh sách phòng qua `POST /api/v1/ingest/rooms`. Gọi
+`POST /api/v1/ingest/init-sample-data` để nạp lại các JSON mẫu sau khi sửa chúng.
+Các thao tác này upsert theo ID, không xóa bản ghi vắng mặt trong request.
+
+Nếu thiếu API key hoặc vẫn để giá trị mẫu, service báo lỗi cấu hình khi khởi động.
+Lỗi Gemini được trả về qua lỗi API, không có cơ chế chuyển sang vector giả. Lỗi truy vấn cũng không bỏ bộ lọc để tìm lại.
+
+Model chat và embedding được lấy từ `.env`; cần chọn model được tài khoản Gemini
+hỗ trợ. Việc cài LangChain không xác nhận model đang cấu hình có khả dụng.
+
+### Kiểm thử offline
+
+```bash
+cd rag-service
+python -m pip install -r requirements-dev.txt
+python -m pytest tests -q
+```
+
+Tests tự thay provider bằng test double trong `tests/conftest.py`, dùng ChromaDB
+thật trong thư mục tạm. Việc này chỉ áp dụng trong tests, không phải chế độ chạy
+của ứng dụng. Tests không dùng
+API key trong `.env`, không sửa chỉ mục đang chạy. Kiểm thử bao gồm upsert,
+persistence, bộ lọc, truy xuất chính sách, lịch sử/prompt và các API chat/pricing.
+
+Tham khảo tích hợp chính thức:
+[Gemini chat](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai),
+[Gemini embeddings](https://docs.langchain.com/oss/python/integrations/embeddings/google_generative_ai),
+[Chroma](https://docs.langchain.com/oss/python/integrations/vectorstores/chroma).
 
 ---
 
@@ -57,7 +122,7 @@ pip install -r requirements.txt
 ### 3. Cấu hình biến môi trường
 Tạo file `.env` từ file `.env.example`:
 ```bash
-copy .env.example .env
+cp .env.example .env  # Chỉ chạy khi chưa có .env
 ```
 Mở file `.env` và điền khóa API của bạn:
 ```env
@@ -71,7 +136,7 @@ SERVICE_PORT=8083
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8083 --reload
 ```
-Khi khởi động lần đầu, hệ thống sẽ tự động nạp dữ liệu mẫu ban đầu gồm các phòng trọ thực tế tại TP.HCM (Quận 1, Quận 7, Bình Thạnh, Gò Vấp, Thủ Đức) và cẩm nang pháp lý thuê trọ vào ChromaDB.
+Khi khởi động lần đầu, hệ thống sẽ tự động nạp dữ liệu mẫu ban đầu gồm 5 phòng mẫu tại TP.HCM và 4 tài liệu quy định thuê trọ mẫu vào ChromaDB.
 
 Truy cập Swagger UI tài liệu API tương tác tại:
 👉 `http://localhost:8083/docs`
@@ -171,20 +236,18 @@ Dành cho `rental-service` hoặc admin khi có phòng trọ mới được duy�
 rag-service/
 ├── app/
 │   ├── api/                       # FastAPI endpoints
-│   ├── core/                      # LangChain models, embeddings, Chroma vector stores
+│   ├── core/                      # Gemini client và ChromaDB
 │   └── services/                  # Nghiệp vụ chat, định giá, đánh giá thị trường
 ├── data/market/                   # CSV thị trường đầu vào của MarketEvaluator
 └── scripts/
     └── crawlers/                  # Công cụ thu thập dữ liệu chạy độc lập
 ```
 
-RAG chạy qua LangChain: `GoogleGenerativeAIEmbeddings` tạo embedding, `langchain-chroma` ghi và truy xuất collection Chroma, còn `ChatGoogleGenerativeAI` tạo câu trả lời chat và phân tích định giá. ChromaDB là vector store duy nhất; dữ liệu phòng và chính sách vẫn nằm ở hai collection riêng. `MarketEvaluator` tiếp tục dùng CSV để tính thống kê giá, không phải một vector store.
-
-Các bản ghi phòng và chính sách được chuyển thành LangChain `Document`. Chúng đã có cấu trúc rõ ràng nên không cần chia nhỏ bằng text splitter. Khi chưa cấu hình `GEMINI_API_KEY`, LangChain dùng embedding và chat model giả lập dành cho môi trường phát triển; chúng không thay thế kết quả AI khi triển khai thật.
+ChromaDB là vector store duy nhất của service. Thông tin phòng và chính sách được lưu trong các collection riêng; `MarketEvaluator` đọc CSV để phân tích giá, không dùng thêm vector store.
 
 | File nguồn | Vị trí/trách nhiệm trong service |
 | --- | --- |
-| `chatbot.py` | Luồng chatbot API tại `app/api/routes_chat.py` và `app/services/rag_chat_service.py`; retrieval dùng LangChain Chroma và câu trả lời đi qua LangChain LCEL. Script CLI cũ dựng index và chờ `input()` ngay khi import nên không được chép nguyên trạng vào app. |
+| `chatbot.py` | Luồng chatbot API đã có tại `app/api/routes_chat.py` và `app/services/rag_chat_service.py`. Script CLI cũ dựng index và chờ `input()` ngay khi import nên không được chép nguyên trạng vào app. |
 | `market_evaluator.py` | `app/services/market_evaluator.py`; `market_data_service.py` dùng nó cho phần so sánh giá ở chatbot và API định giá nếu cấu hình `MARKET_DATA_CSV`. |
 | `tool/tool.py` | `scripts/crawlers/phongtro123_hanoi.py`; chạy thủ công, không chạy cùng FastAPI. |
 
