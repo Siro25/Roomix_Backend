@@ -3,6 +3,7 @@ package com.team4.rental.dtos.request;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import lombok.*;
 
 @Data
@@ -28,4 +29,7 @@ public class AcceptRentalRequest {
     private BigDecimal initialWater;
     @Size(max = 5000)
     private String termsAndConditions;
+
+    @Future
+    private Instant depositDeadline;
 }

@@ -75,6 +75,9 @@ public class Tenancy {
 
     private Instant depositConfirmedAt;
 
+    @Column(nullable = false)
+    private Instant depositDeadline;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
