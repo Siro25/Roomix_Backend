@@ -8,6 +8,8 @@ import com.team4.rental.external.CoreServiceClient;
 import com.team4.rental.repositories.*;
 import com.team4.rental.services.RentalRequestService;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +25,7 @@ public class RentalRequestServiceImpl implements RentalRequestService {
     private final TenancyRepository tenancies;
     private final ActiveTenancyRepository activeTenancies;
     private final CoreServiceClient coreServiceClient;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -31,6 +34,8 @@ public class RentalRequestServiceImpl implements RentalRequestService {
         // chưa có hợp đồng.
         tenancies.ensureRoomLock(request.getRoomId());
         tenancies.lockRoom(request.getRoomId());
+        tenancies.expirePendingForRoom(request.getRoomId(), clock.instant(),
+                TenancyStatus.PENDING, TenancyStatus.CANCELLED, "Quá hạn xác nhận tiền cọc");
         var room = coreServiceClient.getRoom(request.getRoomId(), token);
         if (!request.getRoomId().equals(room.getRoomId()) || room.getPostId() == null
                 || room.getLandlordId() == null || !"APPROVED".equals(room.getPostStatus())
@@ -57,10 +62,34 @@ public class RentalRequestServiceImpl implements RentalRequestService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<RentalRequest> list(UUID userId, String role, Pageable pageable) {
-        return "LANDLORD".equals(role)
-                ? rentalRequests.findByLandlordId(userId, pageable)
-                : rentalRequests.findByTenantId(userId, pageable);
+    public Page<RentalRequest> list(UUID userId, RequestStatus status, UUID roomId, Pageable pageable) {
+        return rentalRequests.searchVisible(userId, status, roomId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RentalRequest get(UUID userId, UUID requestId) {
+        return rentalRequests.findVisible(requestId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
+    public RentalRequest cancel(UUID tenantId, UUID requestId) {
+        UUID roomId = rentalRequests.findTenantRoomId(requestId, tenantId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        tenancies.ensureRoomLock(roomId);
+        tenancies.lockRoom(roomId);
+        var request = rentalRequests.lockTenantRequest(requestId, tenantId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        if (request.getStatus() == RequestStatus.CANCELLED) {
+            return request;
+        }
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new AppException(ErrorCode.INVALID_STATE);
+        }
+        request.setStatus(RequestStatus.CANCELLED);
+        return rentalRequests.save(request);
     }
 
     @Override
@@ -70,6 +99,8 @@ public class RentalRequestServiceImpl implements RentalRequestService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.ensureRoomLock(roomId);
         tenancies.lockRoom(roomId);
+        tenancies.expirePendingForRoom(roomId, clock.instant(),
+                TenancyStatus.PENDING, TenancyStatus.CANCELLED, "Quá hạn xác nhận tiền cọc");
         var rentalRequest = rentalRequests.lockOwned(requestId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (rentalRequest.getStatus() == RequestStatus.ACCEPTED) {
@@ -86,7 +117,13 @@ public class RentalRequestServiceImpl implements RentalRequestService {
                 || !"AVAILABLE".equals(room.getRoomStatus()) || !Boolean.FALSE.equals(room.getRented())) {
             throw new AppException(ErrorCode.ROOM_UNAVAILABLE);
         }
-        if (request.getStartDate().isBefore(LocalDate.now())
+        Instant deadline = request.getDepositDeadline() == null
+                ? clock.instant().plus(Duration.ofHours(24)) : request.getDepositDeadline();
+        if (!deadline.isAfter(clock.instant())
+                || deadline.atZone(clock.getZone()).toLocalDate().isAfter(request.getEndDate())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        if (request.getStartDate().isBefore(LocalDate.now(clock))
                 || !request.getEndDate().isAfter(request.getStartDate())
                 || (room.getAvailableFrom() != null && request.getStartDate().isBefore(room.getAvailableFrom()))) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -99,6 +136,7 @@ public class RentalRequestServiceImpl implements RentalRequestService {
                 .contractCode("HD-" + UUID.randomUUID()).rentalRequestId(requestId)
                 .roomId(roomId).landlordId(landlordId).tenantId(rentalRequest.getTenantId())
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .depositDeadline(deadline)
                 .monthlyRent(request.getMonthlyRent()).depositAmount(request.getDepositAmount())
                 .electricityUnitPrice(request.getElectricityUnitPrice())
                 .waterUnitPrice(request.getWaterUnitPrice())

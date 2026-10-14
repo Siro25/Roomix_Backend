@@ -31,7 +31,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceDetailResponse create(UUID landlordId, CreateInvoiceRequest request) {
-        // All invoice creation and contract termination serialize on the same contract row.
+        // Tất cả các thao tác tạo hóa đơn và chấm dứt hợp đồng đều được xử lý tuần tự trên cùng một dòng hợp đồng
         var tenancy = tenancies.lockOwned(request.getTenancyId(), landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (tenancy.getStatus() != TenancyStatus.ACTIVE) {

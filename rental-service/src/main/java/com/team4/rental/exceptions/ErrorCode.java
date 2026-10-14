@@ -21,6 +21,11 @@ public enum ErrorCode {
     INVOICE_DISPUTED(2012, HttpStatus.CONFLICT, "Cần giải quyết khiếu nại trước khi xác nhận hoặc thu tiền"),
     CORE_UNAVAILABLE(2013, HttpStatus.SERVICE_UNAVAILABLE, "Không thể xác minh dữ liệu tại Core Service"),
     DATA_CONFLICT(2014, HttpStatus.CONFLICT, "Dữ liệu đã thay đổi hoặc vi phạm ràng buộc duy nhất"),
+    DEPOSIT_EXPIRED(2015, HttpStatus.CONFLICT, "Đã hết hạn xác nhận tiền cọc"),
+    SETTLEMENT_REQUIRED(2016, HttpStatus.CONFLICT, "Cần hoàn tất quyết toán trước khi kết thúc hợp đồng"),
+    CORRECTION_NOT_ALLOWED(2017, HttpStatus.CONFLICT, "Chỉ được sửa hóa đơn kỳ mới nhất chưa thu tiền của hợp đồng ACTIVE"),
+    PAYMENT_MISMATCH(2018, HttpStatus.CONFLICT, "Số tiền đã thay đổi hoặc chưa thu đủ/hoàn đủ theo quyết toán"),
+    NOT_OVERDUE(2019, HttpStatus.CONFLICT, "Hóa đơn không còn quá hạn cần nhắc"),
     INTERNAL_ERROR(2099, HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống");
     private final int code;
     private final HttpStatus status;

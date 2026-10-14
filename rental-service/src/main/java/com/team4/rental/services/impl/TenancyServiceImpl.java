@@ -6,7 +6,7 @@ import com.team4.rental.enums.*;
 import com.team4.rental.exceptions.*;
 import com.team4.rental.repositories.*;
 import com.team4.rental.services.TenancyService;
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +20,13 @@ public class TenancyServiceImpl implements TenancyService {
     private final TenancyRepository tenancies;
     private final ActiveTenancyRepository activeTenancies;
     private final TenancyEventRepository events;
+    private final TenancySettlementRepository settlements;
+    private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Tenancy> list(UUID userId, String role, Pageable pageable) {
-        return "LANDLORD".equals(role) ? tenancies.findByLandlordId(userId, pageable)
-                : tenancies.findByTenantId(userId, pageable);
+    public Page<Tenancy> list(UUID userId, TenancyStatus status, UUID roomId, Pageable pageable) {
+        return tenancies.searchVisible(userId, status, roomId, pageable);
     }
 
     @Override
@@ -47,8 +48,11 @@ public class TenancyServiceImpl implements TenancyService {
         if (tenancy.getStatus() == TenancyStatus.ACTIVE) {
             return tenancy;
         }
-        if (tenancy.getStatus() != TenancyStatus.PENDING || tenancy.getEndDate().isBefore(LocalDate.now())) {
+        if (tenancy.getStatus() != TenancyStatus.PENDING || tenancy.getEndDate().isBefore(LocalDate.now(clock))) {
             throw new AppException(ErrorCode.INVALID_STATE);
+        }
+        if (!tenancy.getDepositDeadline().isAfter(clock.instant())) {
+            throw new AppException(ErrorCode.DEPOSIT_EXPIRED);
         }
         if (activeTenancies.existsByRoomId(roomId)) {
             throw new DoubleBookingException();
@@ -57,13 +61,13 @@ public class TenancyServiceImpl implements TenancyService {
                 .tenancyId(tenancyId).tenantId(tenancy.getTenantId())
                 .checkInDate(tenancy.getStartDate()).build());
         tenancy.setStatus(TenancyStatus.ACTIVE);
-        tenancy.setDepositConfirmedAt(Instant.now());
+        tenancy.setDepositConfirmedAt(clock.instant());
         tenancies.save(tenancy);
         // Persist in the same transaction. Kafka delivery is intentionally deferred.
         events.save(TenancyEvent.builder().eventId(UUID.randomUUID())
                 .eventType(TenancyEventType.TENANCY_ACTIVATED).roomId(roomId).tenancyId(tenancyId)
                 .partitionKey(roomId.toString()).topic("rental-events-topic")
-                .occurredAt(Instant.now()).build());
+                .occurredAt(clock.instant()).build());
         return tenancy;
     }
 
@@ -103,7 +107,12 @@ public class TenancyServiceImpl implements TenancyService {
             throw new AppException(ErrorCode.INVALID_STATE);
         }
         if (request.getActualReturnDate().isBefore(tenancy.getStartDate())
-                || request.getActualReturnDate().isAfter(LocalDate.now())) {
+                || request.getActualReturnDate().isAfter(LocalDate.now(clock))) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        var settlement = settlements.findByTenancyId(tenancyId)
+                .orElseThrow(() -> new AppException(ErrorCode.SETTLEMENT_REQUIRED));
+        if (!request.getActualReturnDate().equals(settlement.getActualReturnDate())) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         tenancy.setStatus(TenancyStatus.ENDED);
@@ -113,7 +122,7 @@ public class TenancyServiceImpl implements TenancyService {
         events.save(TenancyEvent.builder().eventId(UUID.randomUUID())
                 .eventType(TenancyEventType.TENANCY_ENDED).roomId(roomId).tenancyId(tenancyId)
                 .partitionKey(roomId.toString()).topic("rental-events-topic")
-                .occurredAt(Instant.now()).build());
+                .occurredAt(clock.instant()).build());
         return tenancy;
     }
 }
