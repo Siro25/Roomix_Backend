@@ -3,6 +3,7 @@ package com.team4.rental.controllers;
 import com.team4.rental.dtos.request.*;
 import com.team4.rental.dtos.response.*;
 import com.team4.rental.entities.*;
+import com.team4.rental.enums.RequestStatus;
 import com.team4.rental.services.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -31,11 +32,26 @@ public class RentalRequestController {
 
     @GetMapping
     public ApiResponse<Page<RentalRequest>> list(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) RequestStatus status,
+            @RequestParam(required = false) UUID roomId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.<Page<RentalRequest>>builder().data(rentalRequestService.list(
-                UUID.fromString(jwt.getSubject()), jwt.getClaimAsString("role"),
+                UUID.fromString(jwt.getSubject()), status, roomId,
                 PageRequest.of(page, size, Sort.by("createdAt").descending().and(Sort.by("id"))))).build();
+    }
+
+    @GetMapping("/{requestId}")
+    public ApiResponse<RentalRequest> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
+        return ApiResponse.<RentalRequest>builder().data(rentalRequestService.get(
+                UUID.fromString(jwt.getSubject()), requestId)).build();
+    }
+
+    @PostMapping("/{requestId}/cancel")
+    @PreAuthorize("hasRole('TENANT')")
+    public ApiResponse<RentalRequest> cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
+        return ApiResponse.<RentalRequest>builder().data(rentalRequestService.cancel(
+                UUID.fromString(jwt.getSubject()), requestId)).build();
     }
 
     @PostMapping("/{requestId}/accept")
