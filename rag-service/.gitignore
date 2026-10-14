@@ -37,3 +37,5 @@ chroma_storage/
 .vscode/
 *.swp
 *.swo
+
+document/

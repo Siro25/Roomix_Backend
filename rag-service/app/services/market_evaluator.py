@@ -149,8 +149,7 @@ class MarketEvaluator:
             'gia_trung_vi': round(prices.median(), 2),
         }
 
-    def evaluate_room(self, gia_thue: str, quan_huyen: str, tien_nghi: str = "",
-                      dien_tich: str = "", tieu_de: str = "") -> str:
+    def evaluate_room(self, gia_thue: str, quan_huyen: str, tien_nghi: str = "") -> str:
         """
         Đánh giá giá phòng trọ so với thị trường nội bộ.
 
@@ -158,8 +157,6 @@ class MarketEvaluator:
             gia_thue: Giá thuê dạng chuỗi (VD: "3.500.000 đ/tháng")
             quan_huyen: Quận/huyện của phòng trọ
             tien_nghi: Chuỗi tiện nghi (phân tách bởi dấu phẩy)
-            dien_tich: Diện tích phòng (VD: "25m²")
-            tieu_de: Tiêu đề bài đăng
 
         Returns:
             Chuỗi đánh giá chi tiết về giá phòng trọ so với thị trường.
@@ -344,10 +341,8 @@ class MarketEvaluator:
 
         # Tính khoảng cách giá
         subset['chenh_lech'] = (subset['gia_so'] - price).abs()
-        # Loại bỏ chính phòng đang xét (nếu trùng giá chính xác)
-        similar = subset.sort_values('chenh_lech').head(top_n + 1)
-        # Lọc ra các phòng khác (không trùng giá hoàn toàn hoặc lấy top_n)
-        similar = similar.head(top_n)
+        # Lấy các phòng có giá gần nhất.
+        similar = subset.sort_values('chenh_lech').head(top_n)
 
         if similar.empty:
             return ""
@@ -363,51 +358,3 @@ class MarketEvaluator:
             )
 
         return "\n".join(lines)
-
-
-def create_evaluation_context(csv_path: str, documents: list) -> str:
-    """
-    Tạo ngữ cảnh đánh giá giá thị trường từ các documents retrieved.
-
-    Được gọi trong RAG chain để bổ sung đánh giá vào context trước khi gửi cho LLM.
-
-    Args:
-        csv_path: Đường dẫn file CSV dữ liệu
-        documents: Danh sách documents từ retriever
-
-    Returns:
-        Chuỗi đánh giá giá cho tất cả các phòng được tìm thấy.
-    """
-    evaluator = MarketEvaluator(csv_path)
-    evaluations = []
-
-    for doc in documents:
-        content = doc.page_content if hasattr(doc, 'page_content') else str(doc)
-
-        # Trích xuất thông tin từ document content
-        gia_thue = _extract_field(content, r'gia_thue[:\s]+(.+?)(?:\n|$)')
-        quan_huyen = _extract_field(content, r'quan_huyen[:\s]+(.+?)(?:\n|$)')
-        tien_nghi = _extract_field(content, r'tien_nghi[:\s]+(.+?)(?:\n|$)')
-        tieu_de = _extract_field(content, r'tieu_de[:\s]+(.+?)(?:\n|$)')
-        dien_tich = _extract_field(content, r'dien_tich[:\s]+(.+?)(?:\n|$)')
-
-        if gia_thue and quan_huyen:
-            eval_result = evaluator.evaluate_room(
-                gia_thue=gia_thue,
-                quan_huyen=quan_huyen,
-                tien_nghi=tien_nghi or "",
-                dien_tich=dien_tich or "",
-                tieu_de=tieu_de or ""
-            )
-            similar = evaluator.find_similar_rooms(quan_huyen, gia_thue)
-            evaluations.append(f"\n--- ĐÁNH GIÁ GIÁ THỊ TRƯỜNG ---\n{eval_result}{similar}")
-
-    return "\n\n".join(evaluations) if evaluations else ""
-
-
-def _extract_field(text: str, pattern: str) -> Optional[str]:
-    """Trích xuất field từ nội dung document bằng regex."""
-    match = re.search(pattern, text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return None

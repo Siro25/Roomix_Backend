@@ -1,12 +1,10 @@
 import json
-import logging
-from typing import Dict, Any, List
+from typing import Dict
+from langchain_core.prompts import ChatPromptTemplate
 from app.models.schemas import PricingPredictRequest, PricingPredictResponse, PricingFactorBreakdown
 from app.core.vector_store import vector_store
-from app.core.langchain_components import create_chat_chain
+from app.core.gemini_client import gemini_client
 from app.services.market_data_service import market_data_service
-
-logger = logging.getLogger(__name__)
 
 # Base price per sqm benchmarks in VND for key districts (TP.HCM & Hanoi)
 DISTRICT_BASE_RATES: Dict[str, float] = {
@@ -62,21 +60,41 @@ ROOM_TYPE_MULTIPLIERS: Dict[str, float] = {
     "O_GHEP": 0.6
 }
 
-PRICING_SYSTEM_PROMPT = (
-    "Bạn là chuyên gia thẩm định giá và tư vấn tối ưu vận hành bất động sản cho thuê "
-    "(phòng trọ, căn hộ mini) tại Việt Nam của nền tảng Roomix."
-)
+
+PRICING_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", "Bạn là chuyên gia thẩm định giá và tư vấn tối ưu vận hành bất động sản cho thuê (phòng trọ, căn hộ mini) tại Việt Nam của nền tảng Roomix."),
+    ("human", """Hãy phân tích cơ hội định giá và chiến lược cho thuê căn phòng sau cho chủ trọ:
+
+THÔNG TIN PHÒNG CỦA CHỦ TRỌ:
+- Khu vực: {district}, {city} (Phường: {ward})
+- Loại hình: {room_type}
+- Diện tích: {area_sqm} m2
+- Tiện ích hiện có: {amenities}
+- Gác lửng: {mezzanine}
+- Dạng Studio: {studio}
+- Mới xây/cải tạo: {condition}
+
+KẾT QUẢ TÍNH TOÁN DỰ ĐOÁN:
+- Giá đề xuất tối ưu: {recommended:,.0f} VND/tháng
+- Khung giá thị trường: {min_p:,.0f} - {max_p:,.0f} VND/tháng
+- Các phòng tương đương tham khảo trong khu vực: {comparables}
+
+SO SÁNH TỪ DỮ LIỆU THỊ TRƯỜNG ĐÃ THU THẬP:
+{market_evaluation}
+
+YÊU CẦU ĐẦU RA:
+1. Đánh giá tính cạnh tranh của mức giá {recommended:,.0f} VND trong khu vực {district}.
+2. Phân khúc khách hàng mục tiêu phù hợp nhất (Sinh viên, Dân văn phòng, Gia đình trẻ,...).
+3. Dự báo tỷ lệ lấp đầy và thời gian trung bình tìm được khách thuê.
+4. Gợi ý 2-3 nâng cấp chi phí thấp giúp chủ trọ có thể nâng giá thêm 300k - 500k/tháng.
+Viết ngắn gọn, chuyên nghiệp, dùng định dạng Markdown với bullet points rõ ràng.
+"""),
+])
 
 
 class PricingService:
     def __init__(self):
-        self._market_analysis_chain = create_chat_chain(
-            system_prompt=PRICING_SYSTEM_PROMPT,
-            fallback_response=(
-                "⚠️ Chưa cấu hình GEMINI_API_KEY. Phần phân tích AI đang ở chế độ giả lập; "
-                "hãy cấu hình khóa Gemini để nhận phân tích thị trường đầy đủ."
-            ),
-        )
+        self.chain = gemini_client.create_chain(PRICING_PROMPT)
 
     def predict_rental_price(self, req: PricingPredictRequest) -> PricingPredictResponse:
         district_key = req.district.strip().lower()
@@ -133,12 +151,29 @@ class PricingService:
             })
 
         # Add a data-backed comparison when a market CSV has been configured.
-        market_evaluation = self._evaluate_against_market_data(req, recommended)
+        market_evaluation = market_data_service.evaluate_room(
+            price=recommended,
+            district=req.district,
+            amenities=req.amenities,
+        )
 
         # Market Analysis via Gemini
-        market_analysis = self._generate_ai_market_analysis(
-            req, recommended, min_price, max_price, comparables, market_evaluation
-        )
+        market_analysis = self.chain.invoke({
+            "district": req.district,
+            "city": req.city,
+            "ward": req.ward or "Trung tâm",
+            "room_type": req.room_type,
+            "area_sqm": req.area_sqm,
+            "amenities": ", ".join(req.amenities) if req.amenities else "Cơ bản",
+            "mezzanine": "Có" if req.is_mezzanine else "Không",
+            "studio": "Có" if req.is_studio else "Không",
+            "condition": "Mới xây" if req.is_newly_built else "Cũ",
+            "recommended": recommended,
+            "min_p": min_price,
+            "max_p": max_price,
+            "comparables": json.dumps(comparables, ensure_ascii=False),
+            "market_evaluation": market_evaluation or "Chưa có CSV dữ liệu thị trường được cấu hình.",
+        })
 
         breakdown = PricingFactorBreakdown(
             base_price_per_sqm=base_rate,
@@ -156,56 +191,6 @@ class PricingService:
             breakdown=breakdown,
             market_analysis=market_analysis,
             comparable_rooms=comparables
-        )
-
-    def _generate_ai_market_analysis(
-        self,
-        req: PricingPredictRequest,
-        recommended: float,
-        min_p: float,
-        max_p: float,
-        comparables: List[Dict[str, Any]],
-        market_evaluation: str = ""
-    ) -> str:
-        prompt = f"""
-Hãy phân tích cơ hội định giá và chiến lược cho thuê căn phòng sau cho chủ trọ:
-
-THÔNG TIN PHÒNG CỦA CHỦ TRỌ:
-- Khu vực: {req.district}, {req.city} (Phường: {req.ward or 'Trung tâm'})
-- Loại hình: {req.room_type}
-- Diện tích: {req.area_sqm} m2
-- Tiện ích hiện có: {', '.join(req.amenities) if req.amenities else 'Cơ bản'}
-- Gác lửng: {'Có' if req.is_mezzanine else 'Không'}
-- Dạng Studio: {'Có' if req.is_studio else 'Không'}
-- Mới xây/cải tạo: {'Mới xây' if req.is_newly_built else 'Cũ'}
-
-KẾT QUẢ TÍNH TOÁN DỰ ĐOÁN:
-- Giá đề xuất tối ưu: {recommended:,.0f} VND/tháng
-- Khung giá thị trường: {min_p:,.0f} - {max_p:,.0f} VND/tháng
-- Các phòng tương đương tham khảo trong khu vực: {json.dumps(comparables, ensure_ascii=False)}
-
-SO SÁNH TỪ DỮ LIỆU THỊ TRƯỜNG ĐÃ THU THẬP:
-{market_evaluation or "Chưa có CSV dữ liệu thị trường được cấu hình."}
-
-YÊU CẦU ĐẦU RA:
-1. Đánh giá tính cạnh tranh của mức giá {recommended:,.0f} VND trong khu vực {req.district}.
-2. Phân khúc khách hàng mục tiêu phù hợp nhất (Sinh viên, Dân văn phòng, Gia đình trẻ,...).
-3. Dự báo tỷ lệ lấp đầy và thời gian trung bình tìm được khách thuê.
-4. Gợi ý 2-3 nâng cấp chi phí thấp giúp chủ trọ có thể nâng giá thêm 300k - 500k/tháng.
-Viết ngắn gọn, chuyên nghiệp, dùng định dạng Markdown với bullet points rõ ràng.
-"""
-        try:
-            return self._market_analysis_chain.invoke({"prompt": prompt})
-        except Exception:
-            logger.exception("LangChain market analysis generation failed.")
-            return "Không thể tạo phân tích thị trường lúc này. Vui lòng thử lại sau."
-
-    def _evaluate_against_market_data(self, req: PricingPredictRequest, recommended: float) -> str:
-        return market_data_service.evaluate_room(
-            price=recommended,
-            district=req.district,
-            amenities=req.amenities,
-            area_sqm=req.area_sqm,
         )
 
 

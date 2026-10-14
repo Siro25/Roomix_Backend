@@ -3,10 +3,11 @@ from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+#Đọc các biến môi trường từ file .env và cung cấp cấu hình cho ứng dụng
 class Settings(BaseSettings):
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
+    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
 
     SERVICE_PORT: int = int(os.getenv("SERVICE_PORT", "8083"))
     SERVICE_HOST: str = os.getenv("SERVICE_HOST", "0.0.0.0")

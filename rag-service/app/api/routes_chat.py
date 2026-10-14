@@ -6,6 +6,7 @@ from app.services.rag_chat_service import rag_chat_service
 router = APIRouter(prefix="/chat", tags=["RAG Chat & Support"])
 logger = logging.getLogger(__name__)
 
+# Endpoint: Chat tư vấn tìm phòng trọ và giải đáp quy chế
 @router.post("", response_model=ChatResponse, summary="Chat tư vấn tìm phòng trọ và giải đáp quy chế")
 def chat_with_rag(request: ChatRequest):
     """
