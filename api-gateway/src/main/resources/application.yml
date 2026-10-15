@@ -9,6 +9,20 @@ spring:
       server:
         webflux:
           routes:
+            - id: core-openapi
+              uri: ${CORE_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/openapi/core/**
+              filters:
+                - StripPrefix=2
+
+            - id: rental-openapi
+              uri: ${RENTAL_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/openapi/rental/**
+              filters:
+                - StripPrefix=2
+
             - id: core-websocket
               uri: ${CORE_SERVICE_WS_URL:ws://localhost:8081}
               predicates:
@@ -33,3 +47,19 @@ spring:
               uri: ${FACE_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/face/**
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    operations-sorter: method
+    tags-sorter: alpha
+    urls:
+      - name: API Gateway
+        url: /v3/api-docs
+      - name: Core Service
+        url: /openapi/core/v3/api-docs
+      - name: Rental Service
+        url: /openapi/rental/v3/api-docs
