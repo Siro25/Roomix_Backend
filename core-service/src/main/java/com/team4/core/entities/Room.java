@@ -59,6 +59,7 @@ public class Room {
     int maxTenants;
 
     @Builder.Default
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     RoomStatus status = RoomStatus.AVAILABLE;
@@ -84,6 +85,7 @@ public class Room {
     String amenitiesDescription;
 
     @Builder.Default
+    @Setter
     @Column(name = "is_rented", nullable = false)
     boolean rented = false;
 
