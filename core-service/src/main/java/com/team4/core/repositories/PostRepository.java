@@ -3,6 +3,7 @@ package com.team4.core.repositories;
 import com.team4.core.entities.Post;
 import com.team4.core.entities.Room;
 import com.team4.core.enums.PostStatus;
+import com.team4.core.enums.RoomStatus;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import java.util.Optional;
@@ -34,11 +35,12 @@ public interface PostRepository extends JpaRepository<Post, UUID>, JpaSpecificat
             Predicate approved = criteriaBuilder.equal(
                     root.get("status"), PostStatus.APPROVED);
             Predicate notRented = criteriaBuilder.isFalse(room.get("rented"));
+            Predicate available = criteriaBuilder.equal(room.get("status"), RoomStatus.AVAILABLE);
             Predicate optionalFilters = filters.toPredicate(root, query, criteriaBuilder);
             if (optionalFilters == null) {
-                return criteriaBuilder.and(approved, notRented);
+                return criteriaBuilder.and(approved, notRented, available);
             }
-            return criteriaBuilder.and(approved, notRented, optionalFilters);
+            return criteriaBuilder.and(approved, notRented, available, optionalFilters);
         };
         return findAll(publicVisibility, pageable);
     }
