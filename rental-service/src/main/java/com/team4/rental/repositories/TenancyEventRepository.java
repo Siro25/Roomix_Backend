@@ -1,10 +1,7 @@
 package com.team4.rental.repositories;
 
 import com.team4.rental.entities.TenancyEvent;
-import com.team4.rental.enums.*;
-import java.util.*;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TenancyEventRepository extends JpaRepository<TenancyEvent, Long> {
-
 }

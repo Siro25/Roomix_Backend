@@ -63,7 +63,7 @@ public class TenancyServiceImpl implements TenancyService {
         tenancy.setStatus(TenancyStatus.ACTIVE);
         tenancy.setDepositConfirmedAt(clock.instant());
         tenancies.save(tenancy);
-        // Persist in the same transaction. Kafka delivery is intentionally deferred.
+        // Outbox row commits with the tenancy; the publisher sends it afterwards.
         events.save(TenancyEvent.builder().eventId(UUID.randomUUID())
                 .eventType(TenancyEventType.TENANCY_ACTIVATED).roomId(roomId).tenancyId(tenancyId)
                 .partitionKey(roomId.toString()).topic("rental-events-topic")

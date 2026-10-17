@@ -31,5 +31,16 @@ public class TenancyEvent {
     private String topic;
     @Column(nullable = false)
     private Instant occurredAt;
+    @Setter
     private Instant publishedAt;
+    @Setter
+    @Column(nullable = false)
+    private int attemptCount;
+    @Setter
+    @Builder.Default
+    @Column(nullable = false)
+    private Instant nextAttemptAt = Instant.EPOCH;
+    @Setter
+    @Column(length = 1000)
+    private String lastError;
 }
