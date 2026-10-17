@@ -17,7 +17,7 @@ không thêm lớp helper/utility hoặc hàm mapper dùng chung.
   sau đó khách phải xác nhận lại.
 - Đã bỏ AMQP/RabbitMQ dependency khỏi Core và Rental.
 - Có scheduler giải phóng giữ chỗ quá hạn và lưu nhắc thanh toán quá hạn.
-- Chưa có Kafka producer, consumer, broker hay Kafka dependency.
+- Có publisher Kafka đọc transactional outbox; Core nhận sự kiện để đồng bộ trạng thái phòng.
 - Quyết toán: đối soát công nợ, chốt chỉ số cuối, bù trừ cọc, ghi nhận thu đủ/hoàn đủ rồi mới ENDED.
   API end cũ bị chặn nếu chưa có phiếu quyết toán.
 - Điều chỉnh hóa đơn: chỉ kỳ mới nhất chưa thu tiền của hợp đồng ACTIVE, bắt buộc lý do,
@@ -36,7 +36,7 @@ Yêu cầu mới và rental structure có một số điểm khác tài liệu d
 | INVOICE | invoices có contract_id, meter_reading_id, PENDING/CONFIRMED/PAID và is_disputed |
 | INVOICE_ITEM | invoice_items tách rõ tiền phòng, tiền điện, tiền nước |
 | Khóa theo phòng | room_booking_locks đồng bộ transaction kể cả khi chưa có hợp đồng |
-| Sự kiện chờ gửi | tenancy_events lưu sự kiện cùng transaction, chưa phát ra Kafka |
+| Sự kiện thuê | tenancy_events lưu cùng transaction; publisher gửi Kafka sau commit |
 | Lịch sử điều chỉnh | invoice_corrections lưu invoice, meterReading, items trước/sau, revision, người sửa và lý do |
 | Quyết toán | tenancy_settlements lưu chỉ số cuối, công nợ, phí bổ sung, cọc, tiền thu/hoàn; UNIQUE contract_id |
 
@@ -47,15 +47,17 @@ Lịch sử hợp đồng và hóa đơn được giữ lại; kết thúc thuê
 ## Chạy local
 
 Tạo database rỗng `rental_db` trong PostgreSQL. Flyway áp dụng migration theo thứ tự,
-Hibernate chỉ validate schema. Database đã có V1 sẽ chỉ chạy V2/V3/V4 còn thiếu:
+Hibernate chỉ validate schema. Database đã có V1 sẽ chỉ chạy các migration V2–V5 còn thiếu:
 
 - V1: các bảng nghiệp vụ gốc, giữ nguyên.
 - V2: thêm deposit_deadline; hợp đồng PENDING cũ được thêm 24 giờ kể từ lúc migrate.
 - V3: bảng invoice_reminders và các index phục vụ truy vấn quá hạn.
 - V4: invoices.revision, invoice_corrections, tenancy_settlements và ràng buộc số tiền quyết toán.
+- V5: cột retry/backoff và index giữ thứ tự gửi sự kiện theo roomId.
 
 Không sửa migration sau khi đã áp dụng; thay đổi tiếp phải thêm phiên bản mới.
-Các migration mới đã được kiểm thử trong schema riêng, chưa chạy lên rental_db thật trong lần sửa này.
+Core có migration V6 tạo bảng `processed_rental_events`. Hai migration mới sẽ được Flyway
+áp dụng khi khởi động service tương ứng; không xóa hoặc chỉnh các migration cũ.
 
 Tại thư mục rental-service, cấu hình trong PowerShell:
 
@@ -358,41 +360,71 @@ Gửi `POST /api/invoices/{invoiceId}/corrections`:
    Hai lần tạo cùng kỳ không thể tạo hai bản ghi hoặc ghi lệch chuỗi công tơ.
 5. Hóa đơn có UNIQUE(contract_id, billing_month); cập nhật xác nhận, thu tiền và khiếu nại khóa hàng invoice.
 
-## Giai đoạn Kafka sau này
+## Kafka đồng bộ với Core
 
-Kích hoạt và kết thúc lưu TenancyEvent trong bảng tenancy_events cùng transaction với hợp đồng.
-Nếu transaction rollback, bản ghi sự kiện cũng rollback. Mỗi sự kiện có eventId riêng,
-sequence, roomId, tenancyId, eventType, topic rental-events-topic và partitionKey = roomId.
-Chọn roomId để cả sự kiện của hai hợp đồng kế tiếp trên cùng phòng có cùng key.
+`TENANCY_ACTIVATED`/`TENANCY_ENDED` được ghi vào `tenancy_events` cùng transaction hợp đồng.
+Scheduler gửi các hàng đã commit vào `rental-events-topic` (3 partitions), dùng `roomId`
+làm Kafka key. `SELECT ... FOR UPDATE SKIP LOCKED` cho phép nhiều instance gửi song song,
+nhưng không chọn sự kiện sau nếu cùng phòng còn sự kiện trước chưa được gửi.
+Chỉ sau broker ACK mới điền `published_at`. Lỗi gửi ghi `attempt_count`,
+`next_attempt_at`, `last_error` và tự retry; không xóa outbox.
 
-**Hiện chưa đồng bộ isRented ở Core.** Search bên Core có thể vẫn thấy phòng đã có hợp đồng,
-nhưng Rental luôn chặn yêu cầu/accept dựa trên database của mình.
-published_at luôn null cho đến khi triển khai publisher thực.
+Core đọc theo consumer group `core-room-projection`, khóa hàng ROOM, ghi
+`processed_rental_events` cùng transaction với cập nhật phòng rồi mới ACK offset.
+`eventId` chống xử lý trùng; `sequence` chặn sự kiện cũ ghi đè trạng thái mới.
+Khi ACTIVE: `is_rented=true`, `ROOM.status=OCCUPIED`; khi ENDED:
+`is_rented=false`, chỉ đổi `OCCUPIED → AVAILABLE`, không đè `MAINTENANCE/RESERVED`.
+Trạng thái duyệt của `POST` không bị Kafka thay đổi. Core retry bản ghi lỗi liên tục
+và giữ partition lại, nên cần xử lý dữ liệu sai thay vì bỏ qua. Đây là đồng bộ eventual consistency;
+khóa và UNIQUE ở Rental vẫn là nguồn bảo vệ chống thuê trùng.
 
-Khi bổ sung Kafka: đọc outbox theo thứ tự sequence của từng roomId, gửi cùng partition key,
-chỉ đánh dấu published_at sau broker acknowledgment; consumer Core dùng eventId chống xử lý lặp.
-Partition key đảm bảo thứ tự trong partition sau khi gửi, không tự sửa được thứ tự sai từ nhiều publisher:
-publisher cần khóa/điều phối để không vượt sự kiện trước của cùng roomId.
+Chạy Kafka local trước hai service (cần Docker Desktop đang hoạt động):
+
+```powershell
+docker compose -f compose.kafka.yml up -d
+```
+
+Mặc định hai service kết nối `localhost:9092`; nếu broker ở máy khác, đặt
+`KAFKA_BOOTSTRAP_SERVERS` giống nhau cho cả hai. Nếu Core/Rental chạy trong cùng
+Docker network với broker, dùng `kafka:19092` thay cho `localhost:9092`.
+Compose lưu log Kafka trong named volume,
+không chạy `docker compose down -v` nếu cần giữ sự kiện. Kiểm tra outbox lỗi:
+
+```sql
+SELECT sequence, event_id, room_id, event_type, attempt_count, next_attempt_at, last_error
+FROM tenancy_events WHERE published_at IS NULL ORDER BY sequence;
+```
+
+Broker single-node PLAINTEXT trong compose chỉ dành cho máy phát triển; triển khai thật
+cần cluster bền vững, replication và xác thực/SSL.
 
 ## Kiểm thử
 
-Build và kiểm tra biên dịch (integration test được SKIPPED khi chưa cấu hình database):
+Chạy `mvnw.cmd clean test` ở cả `rental-service` và `core-service`. Test của Rental
+kiểm tra publisher, retry và gửi/đọc sự kiện qua Kafka nhúng (không cần Docker).
+Test của Core kiểm tra chuyển trạng thái, chống trùng/sự kiện cũ, ACK sau khi xử lý
+và listener nhận JSON qua Kafka nhúng. Nếu Kiro đang tự biên dịch vào `target`, chạy Maven
+với `"-Droomix.build.directory=target-maven-test"` để tách thư mục build.
 
-```powershell
-.\mvnw.cmd clean verify
+Để kiểm tra cả hai service với database thật: bật broker ở trên, khởi động Core và Rental,
+tạo một hợp đồng PENDING qua API rồi gọi `POST /api/tenancies/{tenancyId}/confirm-deposit`.
+Đợi outbox được gửi, kiểm tra:
+
+```sql
+-- rental_db
+SELECT sequence, event_type, room_id, published_at, last_error
+FROM tenancy_events WHERE tenancy_id = '<tenancyId>' ORDER BY sequence;
+
+-- core_db
+SELECT status, is_rented FROM rooms WHERE id = '<roomId>';
+SELECT event_id, event_sequence, event_type FROM processed_rental_events
+WHERE room_id = '<roomId>' ORDER BY event_sequence;
 ```
 
-Integration test cần PostgreSQL, tự tạo schema rental_ext_<UUID> biệt lập, áp dụng migration
-và xóa đúng schema này sau test. User test cần quyền CREATE SCHEMA. Không dùng schema chứa dữ liệu thật.
-
-```powershell
-$env:RENTAL_TEST_DB_URL = "jdbc:postgresql://localhost:5432/postgres"
-$env:RENTAL_TEST_DB_USERNAME = "postgres"
-$env:RENTAL_TEST_DB_PASSWORD = "<mat-khau-test>"
-.\mvnw.cmd clean verify
-```
-
-Nếu không có RENTAL_TEST_DB_URL, integration test được báo SKIPPED chứ không coi như đã kiểm chứng database.
+Sau khi hoàn tất quyết toán và kết thúc hợp đồng, Core phải có `is_rented=false`
+và ROOM trở về `AVAILABLE` nếu trước đó là `OCCUPIED`. Bài đăng `POST.status` giữ nguyên.
+Đây là bước kiểm tra liên service thủ công; test tự động hiện chưa khởi chạy hai database
+PostgreSQL và cả hai ứng dụng cùng lúc.
 RentalExtensionsIntegrationTest có 28 ca: hủy/xem chi tiết đúng quyền, accept và cancel đồng thời,
 lọc dữ liệu theo người dùng, hạn mặc định và tùy chọn, từ chối hạn sai, hết hạn tại ranh giới,
 gửi yêu cầu mới giải phóng giữ chỗ, bảo vệ ACTIVE, lọc hóa đơn/quá hạn/số dư,
