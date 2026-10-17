@@ -2,11 +2,11 @@
 
 ## 1. Mục tiêu
 
-Workflow `ci-cd.yml` tự động kiểm tra năm service Java và phát hành Docker image lên GitHub Container Registry (GHCR). Không có mật khẩu cơ sở dữ liệu, JWT secret hay Cloudinary secret nào được ghi trực tiếp trong workflow.
+Workflow `ci-cd.yml` tự động kiểm tra bốn service Java (Maven `verify`) cùng service Python `rag-service`, sau đó phát hành Docker image lên GitHub Container Registry (GHCR). Không có mật khẩu cơ sở dữ liệu, JWT secret hay Cloudinary secret nào được ghi trực tiếp trong workflow.
 
 ## 2. Khi nào workflow chạy?
 
-- Mọi lần `push`: chạy Maven `verify` cho cả năm service.
+- Mọi lần `push`: chạy Maven `verify` cho bốn service Java (`api-gateway`, `core-service`, `rental-service`, `face-auth-service`) và kiểm tra `rag-service` (cài dependency Python + byte-compile).
 - Pull request vào `main` hoặc `develop`: chạy Maven `verify`, không phát hành image.
 - Push vào `main`: sau khi toàn bộ kiểm thử đạt, phát hành image có tag `latest` và `sha-<commit>`.
 - Push Git tag dạng `v*`, ví dụ `v1.2.0`: phát hành tag `1.2.0`, `1.2` và `sha-<commit>`.

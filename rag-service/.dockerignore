@@ -1,0 +1,24 @@
+.git
+.gitignore
+.github
+.idea
+.vscode
+
+# Python virtual environments & caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Secrets
+.env
+.env.local
+
+# Vector DB & local data
+chroma_db/
+chroma_storage/
+document/

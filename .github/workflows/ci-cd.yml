@@ -31,7 +31,6 @@ jobs:
           - api-gateway
           - core-service
           - rental-service
-          - rag-service
           - face-auth-service
 
     steps:
@@ -54,6 +53,29 @@ jobs:
         working-directory: ${{ matrix.service }}
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
+  verify-rag:
+    name: Verify rag-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: rag-service/requirements.txt
+
+      - name: Install dependencies
+        working-directory: rag-service
+        run: pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Byte-compile application
+        working-directory: rag-service
+        run: python -m compileall -q app
+
   publish-images:
     name: Publish ${{ matrix.service }} image
     needs: verify
@@ -73,7 +95,6 @@ jobs:
           - api-gateway
           - core-service
           - rental-service
-          - rag-service
           - face-auth-service
 
     steps:
@@ -120,5 +141,63 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          provenance: true
+          sbom: true
+
+  publish-rag-image:
+    name: Publish rag-service image
+    needs: verify-rag
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image name
+        id: image
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "name=ghcr.io/${owner}/roomix-rag-service" >> "$GITHUB_OUTPUT"
+
+      - name: Generate image tags and labels
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./rag-service
+          file: ./rag-service/Dockerfile
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha,scope=rag-service
+          cache-to: type=gha,mode=max,scope=rag-service
           provenance: true
           sbom: true
