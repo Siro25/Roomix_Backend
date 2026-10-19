@@ -42,6 +42,8 @@ spring:
               uri: ${AI_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/ai/**
+              filters:
+                - RewritePath=/api/ai/(?<remaining>.*), /api/v1/$\{remaining}
 
             - id: face-service
               uri: ${FACE_SERVICE_URL:http://localhost:8084}
