@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.vscode
+**/target
+**/target-maven-*
+**/.env
+**/.venv
+**/chroma_db
+**/__pycache__
+**/*.iml
+**/.classpath
+**/.project
+**/.settings
+outputs
+work
+*.log
