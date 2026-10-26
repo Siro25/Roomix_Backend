@@ -1,4 +1,4 @@
-# Windows PowerShell 5.1 and PowerShell 7. Environment files are data, never executed.
+﻿# Windows PowerShell 5.1 and PowerShell 7. Environment files are data, never executed.
 param(
     [switch]$CheckOnly,
     [string]$EnvFile = '.env',
@@ -27,7 +27,7 @@ try {
         if ($line -notmatch '^\s*([A-Z][A-Z0-9_]*)\s*=(.*)$') { throw "Invalid env format at line $lineNumber." }
         $name = $Matches[1]
         $value = $Matches[2].Trim()
-        if ($name -notmatch '^(CORE_[A-Z0-9_]+|JWT_SECRET|FACE_SERVICE_TOKEN|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|JAVA_HOME)$') {
+        if ($name -notmatch '^(CORE_[A-Z0-9_]+|JWT_[A-Z0-9_]+|FACE_SERVICE_TOKEN|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|JAVA_HOME|KAFKA_[A-Z0-9_]+|CLOUDINARY_[A-Z0-9_]+)$') {
             throw "Unsupported env key at line $lineNumber. Use Core variable names from .env.example."
         }
         if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {

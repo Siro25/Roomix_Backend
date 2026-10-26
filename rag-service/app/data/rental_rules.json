@@ -1,0 +1,26 @@
+[
+  {
+    "id": "policy-001",
+    "title": "Quy định về tiền đặt cọc thuê phòng trọ theo Pháp luật Việt Nam",
+    "category": "TIEN_COC_HOP_DONG",
+    "content": "Theo Điều 328 Bộ luật Dân sự 2015, đặt cọc là việc một bên giao cho bên kia một khoản tiền hoặc tài sản để bảo đảm giao kết hoặc thực hiện hợp đồng. Tiền cọc thông thường tại các nhà trọ dao động từ 1 đến 2 tháng tiền thuê. Nếu người thuê chấm dứt hợp đồng trước hạn mà không báo trước đủ thời hạn (thường là 30 ngày) hoặc vi phạm nghiêm trọng nội quy, chủ trọ có quyền trừ cọc theo thỏa thuận trong hợp đồng. Ngược lại, nếu hết hạn hợp đồng và bên thuê bàn giao phòng đúng hiện trạng, bên cho thuê phải hoàn trả 100% tiền cọc."
+  },
+  {
+    "id": "policy-002",
+    "title": "Quy định về giá điện nước và phụ phí phòng trọ",
+    "category": "GIA_DIEN_NUOC",
+    "content": "Theo Quyết định của Bộ Công Thương về giá bán điện, các chủ nhà trọ tính tiền điện cho sinh viên, người lao động thuê trọ không được thu vượt quá mức giá bán lẻ quy định của nhà nước hoặc mức giá bậc thang quy định nếu dùng chung công tơ. Các hành vi thu tiền điện giá cắt cổ (trên 4.500 - 5.000đ/kWh mà không có thỏa thuận hợp lý hoặc kinh doanh bất hợp pháp) có thể bị xử phạt hành chính từ 7-10 triệu đồng theo Nghị định 134/2013/NĐ-CP (sửa đổi bổ sung bởi Nghị định 17/2022/NĐ-CP)."
+  },
+  {
+    "id": "policy-003",
+    "title": "Quyền và nghĩa vụ khi chấm dứt hợp đồng thuê phòng trọ trước hạn",
+    "category": "CHAM_DUT_HOP_DONG",
+    "content": "Người thuê trọ hoặc chủ trọ muốn đơn phương chấm dứt hợp đồng thuê trước thời hạn cần thông báo bằng văn bản hoặc tin nhắn xác nhận cho bên kia trước ít nhất 30 ngày (trừ khi hai bên có thỏa thuận thời gian ngắn hơn như 15 ngày). Nếu bên cho thuê tự ý đuổi khách mà không có lý do chính đáng hoặc vi phạm cam kết, bên cho thuê phải bồi thường cọc và tổn thất phát sinh."
+  },
+  {
+    "id": "policy-004",
+    "title": "Thủ tục đăng ký tạm trú cho người thuê trọ (CT01)",
+    "category": "PHAP_LY_TAM_TRU",
+    "content": "Theo Luật Cư trú 2020, công dân đến sinh sống tại chỗ ở hợp pháp ngoài phạm vi đơn vị hành chính cấp xã nơi đăng ký thường trú từ 30 ngày trở lên phải đăng ký tạm trú. Chủ nhà trọ có trách nhiệm phối hợp, cung cấp thông tin hoặc hỗ trợ người thuê khai báo tạm trú qua Cổng dịch vụ công quản lý cư trú hoặc tại Công an xã/phường sở tại."
+  }
+]

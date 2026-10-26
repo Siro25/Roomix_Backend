@@ -1,3 +1,6 @@
+> Sau khi tích hợp main: xem [MAIN_INTEGRATION.md](MAIN_INTEGRATION.md).
+> Các lệnh bootstrap Admin, CORE_DB_INIT_MODE và cấu hình JWT cũ bên dưới không còn áp dụng.
+
 # Core tích hợp Face Python
 
 Core quản lý phiên/tài khoản/JWT. Face Python quản lý ảnh, liveness, nhận

@@ -14,17 +14,16 @@ public class CoreDatabaseCheck {
         for (String key : List.of("CORE_DB_URL", "CORE_DB_USERNAME", "CORE_DB_PASSWORD", "JWT_SECRET", "FACE_SERVICE_TOKEN")) {
             if (env(key).isBlank()) missing.add(key);
         }
-        boolean bootstrap = "true".equalsIgnoreCase(env("CORE_BOOTSTRAP_ADMIN"));
-        if (bootstrap) {
-            for (String key : List.of("CORE_ADMIN_USERNAME", "CORE_ADMIN_PASSWORD", "CORE_ADMIN_EMAIL", "CORE_ADMIN_FULL_NAME")) {
-                if (env(key).isBlank()) missing.add(key);
-            }
-        }
         if (!missing.isEmpty()) fail("CONFIG_MISSING: " + String.join(", ", missing));
         if (!env("CORE_DB_URL").startsWith("jdbc:postgresql://")) fail("CONFIG_INVALID: CORE_DB_URL must be a PostgreSQL JDBC URL.");
-        for (String key : List.of("JWT_SECRET", "FACE_SERVICE_TOKEN")) {
-            if (env(key).getBytes(StandardCharsets.UTF_8).length < 32) fail("CONFIG_INVALID: " + key + " needs at least 32 UTF-8 bytes.");
+        try {
+            if (java.util.Base64.getDecoder().decode(env("JWT_SECRET")).length < 32)
+                fail("CONFIG_INVALID: JWT_SECRET needs at least 32 decoded bytes.");
+        } catch (IllegalArgumentException exception) {
+            fail("CONFIG_INVALID: JWT_SECRET must be valid Base64.");
         }
+        if (env("FACE_SERVICE_TOKEN").getBytes(StandardCharsets.UTF_8).length < 32)
+            fail("CONFIG_INVALID: FACE_SERVICE_TOKEN needs at least 32 UTF-8 bytes.");
         if (env("TELEGRAM_BOT_TOKEN").isBlank() != env("TELEGRAM_CHAT_ID").isBlank()) {
             fail("CONFIG_INVALID: Set both Telegram values, or leave both empty.");
         }
@@ -48,8 +47,13 @@ public class CoreDatabaseCheck {
             }
             System.out.println("DATABASE_OK: Connected to configured Core database.");
             if (!absent.isEmpty()) {
-                if (!"always".equalsIgnoreCase(env("CORE_DB_INIT_MODE"))) fail("SCHEMA_MISSING: " + String.join(", ", absent));
-                System.out.println("SCHEMA_PENDING: Core will initialize missing tables on startup: " + String.join(", ", absent));
+                try (Statement query = db.createStatement();
+                        ResultSet result = query.executeQuery("SELECT to_regclass('flyway_schema_history') IS NOT NULL, EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = current_schema())")) {
+                    result.next();
+                    if (!result.getBoolean(1) && result.getBoolean(2))
+                        fail("SCHEMA_UNMANAGED: Existing tables have no Flyway history. Review schema before startup.");
+                }
+                System.out.println("SCHEMA_PENDING: Flyway will create missing tables on application startup: " + String.join(", ", absent));
             } else {
                 try (Statement query = db.createStatement()) {
                     query.setQueryTimeout(5);

@@ -1,0 +1,144 @@
+name: roomix_backend
+
+
+include:
+  - compose.kafka.yml
+
+services:
+  core-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: core_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${ROOMIX_DB_PASSWORD:?Copy .env.example to .env and set ROOMIX_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${CORE_DB_HOST_PORT:-15432}:5432"
+    volumes:
+      - core-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d core_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  rental-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: rental_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${ROOMIX_DB_PASSWORD:?Copy .env.example to .env and set ROOMIX_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${RENTAL_DB_HOST_PORT:-15433}:5432"
+    volumes:
+      - rental-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rental_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  core-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: core-service
+    environment:
+      CORE_DB_URL: jdbc:postgresql://core-db:5432/core_db
+      CORE_DB_USERNAME: postgres
+      CORE_DB_PASSWORD: ${ROOMIX_DB_PASSWORD:?Copy .env.example to .env and set ROOMIX_DB_PASSWORD}
+      JWT_SECRET: ${ROOMIX_JWT_SECRET:?Set ROOMIX_JWT_SECRET in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    ports:
+      - "127.0.0.1:${CORE_HOST_PORT:-18081}:8081"
+    depends_on:
+      core-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  rental-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: rental-service
+    environment:
+      RENTAL_DB_URL: jdbc:postgresql://rental-db:5432/rental_db
+      RENTAL_DB_USERNAME: postgres
+      RENTAL_DB_PASSWORD: ${ROOMIX_DB_PASSWORD:?Copy .env.example to .env and set ROOMIX_DB_PASSWORD}
+      JWT_SECRET: ${ROOMIX_JWT_SECRET:?Set ROOMIX_JWT_SECRET in .env}
+      CORE_SERVICE_URL: http://core-service:8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    ports:
+      - "127.0.0.1:${RENTAL_HOST_PORT:-18082}:8082"
+    depends_on:
+      rental-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      core-service:
+        condition: service_started
+    restart: unless-stopped
+
+  rag-service:
+    build:
+      context: ./rag-service
+      dockerfile: Dockerfile
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SERVICE_HOST: 0.0.0.0
+      SERVICE_PORT: 8083
+      CHROMA_PERSIST_DIRECTORY: /app/chroma_db
+      MARKET_DATA_CSV: data/market/phongtro_hanoi.csv
+    ports:
+      - "127.0.0.1:${RAG_HOST_PORT:-18083}:8083"
+    volumes:
+      - rag-chroma-data:/app/chroma_db
+    restart: unless-stopped
+
+  face-auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: face-auth-service
+    ports:
+      - "127.0.0.1:${FACE_HOST_PORT:-18084}:8084"
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: api-gateway
+    environment:
+      CORE_SERVICE_URL: http://core-service:8081
+      CORE_SERVICE_WS_URL: ws://core-service:8081
+      RENTAL_SERVICE_URL: http://rental-service:8082
+      AI_SERVICE_URL: http://rag-service:8083
+      FACE_SERVICE_URL: http://face-auth-service:8084
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-18080}:8080"
+    depends_on:
+      core-service:
+        condition: service_started
+      rental-service:
+        condition: service_started
+      rag-service:
+        condition: service_started
+      face-auth-service:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  core-db-data:
+  rental-db-data:
+  rag-chroma-data:

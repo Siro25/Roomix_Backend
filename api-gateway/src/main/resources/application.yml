@@ -1,0 +1,67 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: core-openapi
+              uri: ${CORE_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/openapi/core/**
+              filters:
+                - StripPrefix=2
+
+            - id: rental-openapi
+              uri: ${RENTAL_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/openapi/rental/**
+              filters:
+                - StripPrefix=2
+
+            - id: core-websocket
+              uri: ${CORE_SERVICE_WS_URL:ws://localhost:8081}
+              predicates:
+                - Path=/api/ws,/api/ws/**
+
+            - id: core-service
+              uri: ${CORE_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/auth/**,/api/users/**,/api/rooms/**,/api/favorites/**,/api/admin/**,/api/landlords/**,/api/notifications/**
+
+            - id: rental-service
+              uri: ${RENTAL_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/rentals/**,/api/tenancies/**,/api/invoices/**,/api/chat/**
+
+            - id: ai-service
+              uri: ${AI_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/ai/**
+              filters:
+                - RewritePath=/api/ai/(?<remaining>.*), /api/v1/$\{remaining}
+
+            - id: face-service
+              uri: ${FACE_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/face/**
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    operations-sorter: method
+    tags-sorter: alpha
+    urls:
+      - name: API Gateway
+        url: /v3/api-docs
+      - name: Core Service
+        url: /openapi/core/v3/api-docs
+      - name: Rental Service
+        url: /openapi/rental/v3/api-docs

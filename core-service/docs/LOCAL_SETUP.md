@@ -1,3 +1,6 @@
+> Sau khi tích hợp main: xem [MAIN_INTEGRATION.md](MAIN_INTEGRATION.md).
+> Các lệnh bootstrap Admin, CORE_DB_INIT_MODE và cấu hình JWT cũ bên dưới không còn áp dụng.
+
 # Chạy Core trên PostgreSQL Windows
 
 Đã xác nhận PostgreSQL localhost:5432 đang chạy, database Face là roomix_face.
