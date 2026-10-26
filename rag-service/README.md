@@ -178,20 +178,11 @@ rag-service/
     └── crawlers/                  # Công cụ thu thập dữ liệu chạy độc lập
 ```
 
-ChromaDB là vector store duy nhất của service. Thông tin phòng và chính sách được lưu trong các collection riêng; `MarketEvaluator` đọc CSV để phân tích giá, không dùng thêm vector store.
+ChromaDB là vector store duy nhất của service. Thông tin phòng và chính sách được lưu trong các collection riêng; toàn bộ dữ liệu phòng được đồng bộ trực tiếp từ `core-service`.
 
 | File nguồn | Vị trí/trách nhiệm trong service |
 | --- | --- |
 | `chatbot.py` | Luồng chatbot API đã có tại `app/api/routes_chat.py` và `app/services/rag_chat_service.py`. Script CLI cũ dựng index và chờ `input()` ngay khi import nên không được chép nguyên trạng vào app. |
-| `market_evaluator.py` | `app/services/market_evaluator.py`; `market_data_service.py` dùng nó cho phần so sánh giá ở chatbot và API định giá nếu cấu hình `MARKET_DATA_CSV`. |
-| `tool/tool.py` | `scripts/crawlers/phongtro123_hanoi.py`; chạy thủ công, không chạy cùng FastAPI. |
+| `tool/tool.py` | `scripts/crawlers/phongtro123_hanoi.py`; script tham khảo chạy thủ công độc lập. |
 
-Crawler có thể tạo CSV theo đúng schema của bộ đánh giá:
-
-```powershell
-cd rag-service
-pip install -r scripts/crawlers/requirements.txt
-python scripts/crawlers/phongtro123_hanoi.py --pages 5 --output data/market/phongtro_hanoi.csv
-```
-
-`MARKET_DATA_CSV` mặc định là `data/market/phongtro_hanoi.csv`. Có thể đổi biến này trong `.env`. CSV hiện chưa được chép từ máy nguồn; khi chưa có CSV, API vẫn dùng luồng định giá và các phòng so sánh từ ChromaDB.
+Dữ liệu định giá và so sánh phòng hoàn toàn dựa trên dữ liệu phòng thực tế của hệ thống Roomix được đồng bộ từ `core-service`.
