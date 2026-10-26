@@ -19,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 @Entity
@@ -38,10 +39,16 @@ public class Floor {
     House house;
 
     @Column(name = "floor_number", nullable = false)
+    @Setter
     int floorNumber;
 
     @Column(nullable = false, length = 100)
+    @Setter
     String name;
+
+    @Column(length = 500)
+    @Setter
+    String description;
 
     @Builder.Default
     @OneToMany(mappedBy = "floor", fetch = FetchType.LAZY)

@@ -12,6 +12,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface RoomRepository extends JpaRepository<Room, UUID> {
     Optional<Room> findByIdAndFloorHouseLandlordId(UUID id, UUID landlordId);
 
+    boolean existsByFloorId(UUID floorId);
+
+    boolean existsByFloorHouseId(UUID houseId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
     Optional<Room> lockById(@Param("roomId") UUID roomId);
