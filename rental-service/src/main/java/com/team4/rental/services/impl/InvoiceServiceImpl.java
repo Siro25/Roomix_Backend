@@ -26,6 +26,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final MeterReadingRepository meterReadings;
     private final InvoiceRepository invoices;
     private final InvoiceItemRepository invoiceItems;
+    private final VnpayPaymentAttemptRepository vnpayAttempts;
     private final Clock clock;
 
     @Override
@@ -165,6 +166,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.findByIdAndLandlordId(invoice.getTenancyId(), landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        if (vnpayAttempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING)
+                .filter(attempt -> attempt.getExpiresAt().isAfter(clock.instant())).isPresent()) {
+            throw new AppException(ErrorCode.VNPAY_PAYMENT_PENDING);
+        }
         if (invoice.isDisputed()) {
             throw new AppException(ErrorCode.INVOICE_DISPUTED);
         }
@@ -190,6 +195,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (!tenantId.equals(tenancy.getTenantId())) {
             throw new AppException(ErrorCode.NOT_FOUND);
+        }
+        if (vnpayAttempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING)
+                .filter(attempt -> attempt.getExpiresAt().isAfter(clock.instant())).isPresent()) {
+            throw new AppException(ErrorCode.VNPAY_PAYMENT_PENDING);
         }
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_STATE);

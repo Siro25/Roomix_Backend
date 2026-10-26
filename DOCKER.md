@@ -114,3 +114,22 @@ docker compose up -d --no-build
 ```
 
 Không cần đăng nhập Docker Hub hoặc GHCR để build ứng dụng từ code local. Docker vẫn cần tải các image nền công khai ở lần đầu; GHCR chỉ cần khi bạn muốn kéo image đã được CI đẩy lên registry.
+
+## 7 Thanh toán hóa đơn qua VNPAY sandbox
+
+Đăng ký tài khoản merchant sandbox để nhận `TmnCode` và `HashSecret`, rồi điền vào `.env`:
+
+```dotenv
+VNPAY_TMN_CODE=ma_merchant_cua_ban
+VNPAY_HASH_SECRET=khoa_bi_mat_cua_ban
+VNPAY_RETURN_URL=http://localhost:18080/api/invoices/vnpay/return
+```
+
+Không commit `.env` hoặc gửi `HashSecret` cho frontend. Nếu chạy Rental bằng Spring Dashboard, khai báo ba biến môi trường trên ở launch configuration thay vì trong Docker. `VNPAY_RETURN_URL` là nơi trình duyệt của khách quay về; bạn có thể dùng URL localhost khi VNPay sandbox cho phép. **IPN là kênh riêng server-to-server:** đăng ký `https://<ten-mien-cong-khai>/api/invoices/vnpay/ipn` trong cấu hình merchant VNPay. VNPay không thể gọi `localhost` của máy bạn; dùng HTTPS tunnel hoặc domain công khai để thử IPN. Gateway cho phép hai callback này không cần JWT, nhưng Rental xác minh chữ ký HMAC-SHA512 trước khi xử lý.
+
+Luồng thử: chủ trọ tạo hóa đơn, khách thuê gọi `POST /api/invoices/{invoiceId}/confirm`, sau đó gửi JWT của khách thuê tới `POST /api/invoices/{invoiceId}/vnpay/payment-url`. Response có `paymentUrl` và `txnRef`; mở `paymentUrl` trên trình duyệt và thanh toán bằng tài khoản thử của VNPay. URL hết hạn sau 15 phút. Rental chỉ chuyển hóa đơn sang `PAID` khi nhận IPN đúng chữ ký, đúng `TmnCode`, `txnRef`, số tiền và cả `vnp_ResponseCode`/`vnp_TransactionStatus` bằng `00`. Return URL chỉ cho biết trạng thái đã ghi trong DB, không tự xác nhận thanh toán. Có thể xem lại hóa đơn qua `GET /api/invoices/{invoiceId}`.
+
+Khi chỉ demo trên máy local, Docker Compose bật profile `local` và Swagger có thêm `POST /api/invoices/{invoiceId}/vnpay/dev-confirm`. API này yêu cầu JWT role `TENANT`, kiểm tra người gọi là người thuê của hóa đơn và chỉ xác nhận một giao dịch VNPAY đang `PENDING` còn hạn. Nó gán `paymentMethod = VNPAY_LOCAL_SIMULATION` để phân biệt dữ liệu giả lập với thanh toán thật. Controller này không được khởi tạo nếu không chạy profile `local`; không dùng API này ở production.
+
+Trong lúc giao dịch VNPay đang chờ kết quả, các thao tác thu tiền thủ công, sửa/khiếu nại hóa đơn và hoàn tất quyết toán bị chặn để tránh ghi nhận tiền hai lần. Đây là tích hợp sandbox; trước khi dùng tiền thật cần bổ sung đối soát giao dịch trễ qua API truy vấn và quy trình hoàn tiền/xử lý ngoại lệ.
+Nếu IPN báo thành công cho một mã giao dịch đã bị thay thế sau thời gian hết hạn, hệ thống ghi log yêu cầu đối soát, không tự đánh dấu hóa đơn đã thu; tuyệt đối kiểm tra ở merchant sandbox trước khi thu lại tiền.
