@@ -19,4 +19,4 @@ def predict_rental_price(request: PricingPredictRequest):
         return response
     except Exception as e:
         logger.error(f"Error in pricing predict endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Lỗi tính toán định giá: {str(e)}")
+        raise HTTPException(status_code=500, detail="Lỗi tính toán định giá.")

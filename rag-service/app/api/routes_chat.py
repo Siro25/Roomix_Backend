@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException
+from app.core.gemini_client import EmbeddingError
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services.rag_chat_service import rag_chat_service
 
@@ -16,6 +17,8 @@ def chat_with_rag(request: ChatRequest):
     try:
         response = rag_chat_service.process_chat(request)
         return response
+    except EmbeddingError:
+        raise HTTPException(status_code=503, detail="Dịch vụ embedding tạm thời không khả dụng, vui lòng thử lại sau.")
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Lỗi xử lý tư vấn RAG: {str(e)}")
+        raise HTTPException(status_code=500, detail="Lỗi xử lý tư vấn RAG.")

@@ -44,6 +44,11 @@ class RoomItem(BaseModel):
     contact_phone: Optional[str] = ""
     landlord_name: Optional[str] = ""
     available: bool = True
+    max_tenants: Optional[int] = None
+    available_from: Optional[str] = None
+    house_name: Optional[str] = ""
+    room_number: Optional[str] = ""
+    image_url: Optional[str] = ""
 
 
 class ChatResponse(BaseModel):
