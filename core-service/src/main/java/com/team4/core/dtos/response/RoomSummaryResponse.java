@@ -18,6 +18,9 @@ import lombok.experimental.FieldDefaults;
 public class RoomSummaryResponse {
     UUID postId;
     UUID roomId;
+    UUID landlordId;
+    String landlordName;
+    String contactPhone;
     String title;
     BigDecimal rentalPrice;
     BigDecimal area;

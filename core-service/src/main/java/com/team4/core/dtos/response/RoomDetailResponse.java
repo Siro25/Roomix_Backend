@@ -22,6 +22,9 @@ public class RoomDetailResponse {
     UUID roomId;
     UUID houseId;
     UUID floorId;
+    UUID landlordId;
+    String landlordName;
+    String contactPhone;
     String houseName;
     String floorName;
     int floorNumber;
