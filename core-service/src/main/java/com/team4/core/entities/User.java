@@ -42,6 +42,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     String passwordHash;
 
+    @Column(name = "password_changed_at")
+    Instant passwordChangedAt;
+
     @Column(name = "full_name", nullable = false, length = 100)
     String fullName;
 
@@ -69,5 +72,10 @@ public class User {
 
     public void changeStatus(UserStatus newStatus) {
         status = newStatus;
+    }
+
+    public void changePassword(String newPasswordHash, Instant changedAt) {
+        passwordHash = newPasswordHash;
+        passwordChangedAt = changedAt;
     }
 }

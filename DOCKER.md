@@ -115,7 +115,23 @@ docker compose up -d --no-build
 
 Không cần đăng nhập Docker Hub hoặc GHCR để build ứng dụng từ code local. Docker vẫn cần tải các image nền công khai ở lần đầu; GHCR chỉ cần khi bạn muốn kéo image đã được CI đẩy lên registry.
 
-## 7 Thanh toán hóa đơn qua VNPAY sandbox
+## 7 Quên mật khẩu qua Gmail
+
+Điền Gmail gửi thư và **App Password 16 ký tự** vào `.env`; không dùng mật khẩu Gmail thông thường và không commit file này.
+
+```dotenv
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=google-app-password-16-ky-tu
+MAIL_FROM=your-email@gmail.com
+PASSWORD_RESET_URL=http://localhost:3000/reset-password
+PASSWORD_RESET_EXPIRATION_MINUTES=15
+```
+
+Tạo App Password trong Google Account > Security > 2-Step Verification > App passwords. Backend cung cấp `POST /api/auth/forgot-password` với `{"email":"..."}` và `POST /api/auth/reset-password` với `token`, `newPassword`, `confirmPassword`. Reset token chỉ dùng một lần, được lưu dạng hash, hết hạn sau 15 phút; sau khi đổi mật khẩu, các JWT được phát trước đó bị từ chối.
+
+## 8 Thanh toán hóa đơn qua VNPAY sandbox
 
 Đăng ký tài khoản merchant sandbox để nhận `TmnCode` và `HashSecret`, rồi điền vào `.env`:
 
