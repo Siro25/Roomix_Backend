@@ -26,6 +26,9 @@ public enum ErrorCode {
     CORRECTION_NOT_ALLOWED(2017, HttpStatus.CONFLICT, "Chỉ được sửa hóa đơn kỳ mới nhất chưa thu tiền của hợp đồng ACTIVE"),
     PAYMENT_MISMATCH(2018, HttpStatus.CONFLICT, "Số tiền đã thay đổi hoặc chưa thu đủ/hoàn đủ theo quyết toán"),
     NOT_OVERDUE(2019, HttpStatus.CONFLICT, "Hóa đơn không còn quá hạn cần nhắc"),
+    VNPAY_NOT_CONFIGURED(2020, HttpStatus.SERVICE_UNAVAILABLE, "Chưa cấu hình tài khoản VNPAY sandbox"),
+    VNPAY_PAYMENT_PENDING(2021, HttpStatus.CONFLICT, "Hóa đơn đang có giao dịch VNPAY chờ kết quả"),
+    VNPAY_AMOUNT_INVALID(2022, HttpStatus.BAD_REQUEST, "Số tiền hóa đơn không phù hợp để thanh toán VNPAY"),
     INTERNAL_ERROR(2099, HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống");
     private final int code;
     private final HttpStatus status;

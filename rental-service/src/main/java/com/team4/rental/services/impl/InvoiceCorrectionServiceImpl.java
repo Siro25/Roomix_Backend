@@ -26,6 +26,7 @@ public class InvoiceCorrectionServiceImpl implements InvoiceCorrectionService {
     private final MeterReadingRepository readings;
     private final InvoiceItemRepository items;
     private final InvoiceCorrectionRepository corrections;
+    private final VnpayPaymentAttemptRepository vnpayAttempts;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -46,6 +47,10 @@ public class InvoiceCorrectionServiceImpl implements InvoiceCorrectionService {
         var tenancy = tenancies.lockOwned(tenancyId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         var invoice = invoices.lockById(invoiceId).orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        if (vnpayAttempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING)
+                .filter(attempt -> attempt.getExpiresAt().isAfter(clock.instant())).isPresent()) {
+            throw new AppException(ErrorCode.VNPAY_PAYMENT_PENDING);
+        }
         var reading = readings.findFirstByTenancyIdOrderByBillingMonthDesc(tenancyId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (tenancy.getStatus() != TenancyStatus.ACTIVE || invoice.getStatus() == InvoiceStatus.PAID

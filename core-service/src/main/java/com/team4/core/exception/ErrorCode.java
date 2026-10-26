@@ -38,6 +38,14 @@ public enum ErrorCode {
     FAVORITE_ALREADY_EXISTS(1029, HttpStatus.CONFLICT, "Phòng đã có trong danh sách yêu thích"),
     FAVORITE_NOT_FOUND(1030, HttpStatus.NOT_FOUND, "Không tìm thấy phòng trong danh sách yêu thích"),
     NOTIFICATION_NOT_FOUND(1031, HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"),
+    HOUSE_NOT_FOUND(1032, HttpStatus.NOT_FOUND, "Không tìm thấy nhà thuộc quyền quản lý của bạn"),
+    FLOOR_NUMBER_EXISTS(1033, HttpStatus.CONFLICT, "Số tầng đã tồn tại trong nhà này"),
+    FLOOR_NUMBER_INVALID(1034, HttpStatus.BAD_REQUEST, "Số tầng phải nằm trong tổng số tầng của nhà"),
+    HOUSE_UPDATE_NOT_ALLOWED(1035, HttpStatus.CONFLICT, "Không thể giảm tổng số tầng vì vẫn còn tầng ở vị trí cao hơn"),
+    HOUSE_DELETE_NOT_ALLOWED(1036, HttpStatus.CONFLICT, "Không thể xóa nhà vẫn còn phòng"),
+    FLOOR_DELETE_NOT_ALLOWED(1037, HttpStatus.CONFLICT, "Không thể xóa tầng vẫn còn phòng"),
+    PASSWORD_RESET_TOKEN_INVALID(1038, HttpStatus.BAD_REQUEST, "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"),
+    PASSWORD_CONFIRMATION_MISMATCH(1039, HttpStatus.BAD_REQUEST, "Xác nhận mật khẩu không khớp"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

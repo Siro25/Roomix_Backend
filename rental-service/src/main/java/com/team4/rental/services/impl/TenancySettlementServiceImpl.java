@@ -22,6 +22,7 @@ public class TenancySettlementServiceImpl implements TenancySettlementService {
     private final InvoiceRepository invoices;
     private final MeterReadingRepository readings;
     private final TenancySettlementRepository settlements;
+    private final VnpayPaymentAttemptRepository vnpayAttempts;
     private final TenancyService tenancyService;
     private final Clock clock;
 
@@ -123,6 +124,10 @@ public class TenancySettlementServiceImpl implements TenancySettlementService {
         }
         var bills = invoices.lockAllForTenancy(tenancyId);
         for (var bill : bills) {
+            if (vnpayAttempts.findByInvoiceIdAndStatus(bill.getId(), VnpayPaymentStatus.PENDING)
+                    .filter(attempt -> attempt.getExpiresAt().isAfter(clock.instant())).isPresent()) {
+                throw new AppException(ErrorCode.VNPAY_PAYMENT_PENDING);
+            }
             if (bill.isDisputed()) {
                 throw new AppException(ErrorCode.INVOICE_DISPUTED);
             }
