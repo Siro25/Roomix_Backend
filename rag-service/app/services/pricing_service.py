@@ -1,10 +1,9 @@
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.models.schemas import PricingPredictRequest, PricingPredictResponse, PricingFactorBreakdown
 from app.core.vector_store import vector_store
 from app.core.gemini_client import gemini_client
-from app.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
 
@@ -118,12 +117,9 @@ class PricingService:
                 "amenities": amenities_list
             })
 
-        # Add a data-backed comparison when a market CSV has been configured.
-        market_evaluation = self._evaluate_against_market_data(req, recommended)
-
-        # Market Analysis via Gemini
+        # Market Analysis via Gemini based on system benchmarks & comparable rooms
         market_analysis = self._generate_ai_market_analysis(
-            req, recommended, min_price, max_price, comparables, market_evaluation
+            req, recommended, min_price, max_price, comparables
         )
 
         breakdown = PricingFactorBreakdown(
@@ -151,11 +147,10 @@ class PricingService:
         min_p: float,
         max_p: float,
         comparables: List[Dict[str, Any]],
-        market_evaluation: str = ""
     ) -> str:
         prompt = f"""
 Bạn là chuyên gia thẩm định giá và tư vấn tối ưu vận hành bất động sản cho thuê (phòng trọ, căn hộ mini) tại Việt Nam của nền tảng Roomix.
-Hãy phân tích cơ hội định giá và chiến lược cho thuê căn phòng sau cho chủ trọ:
+Hãy phân tích cơ hội định giá và chiến lược cho thuê căn phòng sau cho chủ trọ dựa trên dữ liệu hệ thống:
 
 THÔNG TIN PHÒNG CỦA CHỦ TRỌ:
 - Khu vực: {req.district}, {req.city} (Phường: {req.ward or 'Trung tâm'})
@@ -166,16 +161,13 @@ THÔNG TIN PHÒNG CỦA CHỦ TRỌ:
 - Dạng Studio: {'Có' if req.is_studio else 'Không'}
 - Mới xây/cải tạo: {'Mới xây' if req.is_newly_built else 'Cũ'}
 
-KẾT QUẢ TÍNH TOÁN DỰ ĐOÁN:
+KẾT QUẢ TÍNH TOÁN DỰ ĐOÁN TỪ HỆ THỐNG:
 - Giá đề xuất tối ưu: {recommended:,.0f} VND/tháng
-- Khung giá thị trường: {min_p:,.0f} - {max_p:,.0f} VND/tháng
-- Các phòng tương đương tham khảo trong khu vực: {json.dumps(comparables, ensure_ascii=False)}
-
-SO SÁNH TỪ DỮ LIỆU THỊ TRƯỜNG ĐÃ THU THẬP:
-{market_evaluation or "Chưa có CSV dữ liệu thị trường được cấu hình."}
+- Khung giá hệ thống: {min_p:,.0f} - {max_p:,.0f} VND/tháng
+- Các phòng tương đương đang cho thuê trên hệ thống Roomix: {json.dumps(comparables, ensure_ascii=False) if comparables else 'Chưa có phòng tương đương cùng khu vực trên hệ thống'}
 
 YÊU CẦU ĐẦU RA:
-1. Đánh giá tính cạnh tranh của mức giá {recommended:,.0f} VND trong khu vực {req.district}.
+1. Đánh giá tính cạnh tranh của mức giá {recommended:,.0f} VND so với các phòng trong cùng khu vực {req.district}.
 2. Phân khúc khách hàng mục tiêu phù hợp nhất (Sinh viên, Dân văn phòng, Gia đình trẻ,...).
 3. Dự báo tỷ lệ lấp đầy và thời gian trung bình tìm được khách thuê.
 4. Gợi ý 2-3 nâng cấp chi phí thấp giúp chủ trọ có thể nâng giá thêm 300k - 500k/tháng.
@@ -184,13 +176,69 @@ Viết ngắn gọn, chuyên nghiệp, dùng định dạng Markdown với bulle
         analysis = gemini_client.generate_content(prompt)
         return analysis
 
-    def _evaluate_against_market_data(self, req: PricingPredictRequest, recommended: float) -> str:
-        return market_data_service.evaluate_room(
-            price=recommended,
-            district=req.district,
-            amenities=req.amenities,
-            area_sqm=req.area_sqm,
-        )
+    def evaluate_room_price(
+        self,
+        price: float,
+        area_sqm: float,
+        district: str,
+        amenities: Optional[List[str]] = None,
+        room_type: str = "PHONG_TRO",
+    ) -> Dict[str, Any]:
+        """Đánh giá mức giá của một phòng (GIÁ TỐT, GIÁ HỢP LÝ, GIÁ CAO)
+        dựa trên định mức diện tích, tiện nghi và mặt bằng hệ thống Roomix.
+        """
+        if not price or price <= 0:
+            return {
+                "label": "CHƯA RÕ",
+                "diff_percent": 0.0,
+                "estimated_price": 0.0,
+                "explanation": "Chưa có đủ thông tin giá thuê để đánh giá.",
+            }
+
+        area = float(area_sqm) if area_sqm and area_sqm > 0 else 20.0
+        district_key = (district or "").strip().lower()
+        base_rate = DISTRICT_BASE_RATES.get(district_key, 130000.0)
+
+        multiplier = ROOM_TYPE_MULTIPLIERS.get((room_type or "PHONG_TRO").upper(), 1.0)
+        area_cost = base_rate * multiplier * area
+
+        amenities_val = 0.0
+        normalized_amenities = [(a or "").strip().lower() for a in (amenities or [])]
+        for a_key, val in AMENITY_VALUES.items():
+            if any(a_key in item for item in normalized_amenities):
+                amenities_val += val
+
+        raw_estimated = area_cost + amenities_val
+        estimated = round(raw_estimated / 50000.0) * 50000.0
+
+        diff_percent = round(((price - estimated) / estimated) * 100, 1)
+
+        district_name = district or "khu vực này"
+        if diff_percent <= -8.0:
+            label = "GIÁ TỐT"
+            explanation = (
+                f"Giá thuê {price:,.0f} đ/tháng thấp hơn khoảng {abs(diff_percent):.0f}% "
+                f"so với mức định giá {estimated:,.0f} đ dựa trên diện tích {area:.0f}m² và tiện ích tại {district_name}."
+            )
+        elif diff_percent <= 8.0:
+            label = "GIÁ HỢP LÝ"
+            explanation = (
+                f"Giá thuê {price:,.0f} đ/tháng sát với mức định giá {estimated:,.0f} đ "
+                f"của hệ thống cho diện tích {area:.0f}m² và tiện nghi tại {district_name}."
+            )
+        else:
+            label = "GIÁ CAO"
+            explanation = (
+                f"Giá thuê {price:,.0f} đ/tháng cao hơn khoảng {diff_percent:.0f}% "
+                f"so với mức chuẩn {estimated:,.0f} đ tại {district_name}."
+            )
+
+        return {
+            "label": label,
+            "diff_percent": diff_percent,
+            "estimated_price": estimated,
+            "explanation": explanation,
+        }
 
 
 pricing_service = PricingService()
