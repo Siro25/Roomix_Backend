@@ -5,5 +5,6 @@ public enum NotificationType {
     INVOICE,
     POST_APPROVAL,
     INTEREST_REQUEST,
+    CONTACT_CARD,
     GENERAL
 }

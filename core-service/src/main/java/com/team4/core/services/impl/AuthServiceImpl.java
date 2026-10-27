@@ -2,32 +2,34 @@ package com.team4.core.services.impl;
 
 import com.team4.core.config.PasswordResetProperties;
 import com.team4.core.config.RefreshTokenProperties;
+import com.team4.core.dtos.request.ChangePasswordRequest;
 import com.team4.core.dtos.request.ForgotPasswordRequest;
-import com.team4.core.services.AuthService;
 import com.team4.core.dtos.request.LoginRequest;
 import com.team4.core.dtos.request.RegisterRequest;
 import com.team4.core.dtos.request.ResetPasswordRequest;
 import com.team4.core.dtos.response.AuthResponse;
 import com.team4.core.dtos.response.UserProfileResponse;
-import com.team4.core.entities.User;
 import com.team4.core.entities.PasswordResetToken;
 import com.team4.core.entities.RefreshToken;
-import com.team4.core.events.PasswordResetRequestedEvent;
+import com.team4.core.entities.User;
 import com.team4.core.enums.Role;
 import com.team4.core.enums.UserStatus;
+import com.team4.core.events.PasswordResetRequestedEvent;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
-import com.team4.core.repositories.UserRepository;
 import com.team4.core.repositories.PasswordResetTokenRepository;
 import com.team4.core.repositories.RefreshTokenRepository;
+import com.team4.core.repositories.UserRepository;
 import com.team4.core.security.CustomUserDetails;
 import com.team4.core.security.JwtTokenProvider;
+import com.team4.core.services.AuthService;
 import com.team4.core.services.AuthSession;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -150,12 +152,12 @@ public class AuthServiceImpl implements AuthService {
         String tokenHash;
         try {
             tokenHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }
         passwordResetTokenRepository.save(PasswordResetToken.builder()
-                .id(java.util.UUID.randomUUID())
+                .id(UUID.randomUUID())
                 .userId(user.get().getId())
                 .tokenHash(tokenHash)
                 .expiresAt(now.plus(Duration.ofMinutes(passwordResetProperties.getExpirationMinutes())))
@@ -173,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
         String tokenHash;
         try {
             tokenHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(request.getToken().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                    .digest(request.getToken().getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }
@@ -191,6 +193,23 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.revokeAllForUser(user.getId(), now);
         userRepository.save(user);
         passwordResetTokenRepository.save(token);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRMATION_MISMATCH);
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new AppException(ErrorCode.CURRENT_PASSWORD_INVALID);
+        }
+        Instant now = Instant.now();
+        user.changePassword(passwordEncoder.encode(request.getNewPassword()), now);
+        refreshTokenRepository.revokeAllForUser(userId, now);
+        userRepository.save(user);
     }
 
     private AuthSession response(User user) {
@@ -235,7 +254,7 @@ public class AuthServiceImpl implements AuthService {
     private String hashRefreshToken(String rawToken) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                    .digest(rawToken.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }

@@ -47,6 +47,10 @@ public enum ErrorCode {
     PASSWORD_RESET_TOKEN_INVALID(1038, HttpStatus.BAD_REQUEST, "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"),
     PASSWORD_CONFIRMATION_MISMATCH(1039, HttpStatus.BAD_REQUEST, "Xác nhận mật khẩu không khớp"),
     INVALID_REFRESH_TOKEN(1040, HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn hoặc không hợp lệ"),
+    CURRENT_PASSWORD_INVALID(1041, HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng"),
+    LANDLORD_PROFILE_NOT_FOUND(1042, HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ chủ trọ"),
+    REPORT_NOT_FOUND(1043, HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo vi phạm"),
+    REPORT_STATUS_INVALID(1044, HttpStatus.BAD_REQUEST, "Trạng thái xử lý báo cáo không hợp lệ"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

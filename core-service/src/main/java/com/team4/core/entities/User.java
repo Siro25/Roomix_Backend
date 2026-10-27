@@ -54,6 +54,9 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
 
+    @Column(length = 100)
+    String zalo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     Role role;
@@ -77,5 +80,12 @@ public class User {
     public void changePassword(String newPasswordHash, Instant changedAt) {
         passwordHash = newPasswordHash;
         passwordChangedAt = changedAt;
+    }
+
+    public void updateProfile(String fullName, String phoneNumber, String avatarUrl, String zalo) {
+        this.fullName = fullName;
+        this.phoneNumber = phoneNumber;
+        this.avatarUrl = avatarUrl;
+        this.zalo = zalo;
     }
 }
