@@ -6,8 +6,9 @@ phiên xác thực và JWT. Service này **không cấp JWT và không kiểm tr
 
 ## Hai cách đăng nhập độc lập
 
-Xem `docs/HANDOFF.md` để đối chiếu phạm vi Face, các API Core còn cần tích
-hợp và trình tự kiểm tra thật với tài khoản Admin.
+Xem `docs/LOCAL_ACCEPTANCE.md` để biết phần đã kiểm tra, cấu hình local và
+các kết quả kiểm tra webcam/Telegram thật và các bước nghiệm thu còn lại. `docs/HANDOFF.md`
+mô tả hợp đồng giao tiếp và phạm vi Face.
 
 - Mật khẩu: trình duyệt gọi Core; không gọi Face Service, không cần camera.
 - Khuôn mặt: Core tạo phiên LOGIN, trình duyệt thực hiện thử thách với Face,
@@ -43,9 +44,8 @@ face-auth-service/
 │   │   ├── core_client.py  Gọi Core Java
 │   │   └── telegram_notifier.py Gửi ảnh Telegram
 │   └── web/                Trang thử và client camera trình duyệt
-├── tests/                   Kiểm thử Python, web/ JavaScript và legacy/
+├── tests/                   Kiểm thử Python, JavaScript và Compose
 ├── docs/                    Hợp đồng Core và bản đồ file
-├── legacy/                  Code gốc để tham khảo, không phải service thứ hai
 ├── requirements.txt         Dependencies chạy ứng dụng
 ├── requirements-test.txt    Dependencies kiểm thử
 └── .env.example             Các biến môi trường cần cấu hình
@@ -56,11 +56,13 @@ face-auth-service/
 không phải mô hình AI được viết lại độc lập. Xem `docs/FILE_MAP.md` để tra
 đường dẫn cũ và mới.
 
-**Trạng thái hiện tại:** đã thống nhất và sắp xếp mã nguồn. Storage đã chuyển sang PostgreSQL riêng cho Face Service; xem
-`docs/DATABASE.md` để khởi tạo và cấu hình. Đã kiểm tra mô hình thật chạy trên
-CPU với tensor và ảnh trống; chưa xác nhận webcam, độ chính xác hoặc Core thật.
-Các thành phần điểm danh cũ đã chuyển sang `legacy/`, không nằm trong luồng
-khởi động Face Auth hiện tại.
+**Trạng thái hiện tại:** storage dùng PostgreSQL riêng cho Face. Đã tích hợp
+Core mới từ main và kiểm tra HTTP thật qua Gateway với analyzer giả. Mô hình
+thật chạy được trên CPU. Người dùng đã xác nhận đăng ký/đăng nhập webcam và
+đủ năm loại thông báo Telegram hoạt động. Hiệu chỉnh độ chính xác/liveness
+được để sau. Xem `docs/LOCAL_ACCEPTANCE.md` và `docs/DOCKER.md`.
+Code điểm danh và bộ khung Java không dùng đã được bỏ khỏi cây source.
+Bản gốc lưu cục bộ trong `.tmp/review-archive/`, không đưa vào Git.
 
 ## Chạy trên Windows
 
@@ -189,10 +191,10 @@ Các test lưu trữ/nghiệp vụ/API cần PostgreSQL test riêng; nếu thi�
 `TEST_DATABASE_URL`, chúng được đánh dấu SKIP, không được coi là đã đạt:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
+.\.venv-runtime\Scripts\python.exe -m pip install -r requirements-test.txt
 $env:TEST_DATABASE_URL = 'postgresql://face_test:MAT_KHAU@localhost:5432/roomix_face_test'
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv\Scripts\python.exe -m compileall -q src/face_auth tests
+.\.venv-runtime\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv-runtime\Scripts\python.exe -m compileall -q src/face_auth tests
 ```
 
 Dọn thử thách hết hạn, gồm embedding/ảnh tạm:

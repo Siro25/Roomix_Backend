@@ -50,6 +50,10 @@ services:
       CORE_DB_USERNAME: postgres
       CORE_DB_PASSWORD: ${ROOMIX_DB_PASSWORD:?Copy .env.example to .env and set ROOMIX_DB_PASSWORD}
       JWT_SECRET: ${ROOMIX_JWT_SECRET:?Set ROOMIX_JWT_SECRET in .env}
+      FACE_SERVICE_TOKEN: ${FACE_SERVICE_TOKEN:?Set FACE_SERVICE_TOKEN in .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      CORE_TELEGRAM_WORKER_ENABLED: ${CORE_TELEGRAM_WORKER_ENABLED:-false}
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
@@ -103,14 +107,44 @@ services:
       - rag-chroma-data:/app/chroma_db
     restart: unless-stopped
 
+  face-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: roomix_face
+      POSTGRES_USER: face_auth
+      POSTGRES_PASSWORD: ${ROOMIX_DB_PASSWORD:?Set ROOMIX_DB_PASSWORD in .env}
+    volumes:
+      - face-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U face_auth -d roomix_face"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   face-auth-service:
     build:
-      context: .
+      context: ./face-auth-service
       dockerfile: Dockerfile
-      args:
-        SERVICE: face-auth-service
+    environment:
+      CORE_URL: http://core-service:8081
+      FACE_SERVICE_TOKEN: ${FACE_SERVICE_TOKEN:?Set FACE_SERVICE_TOKEN in .env}
+      FACE_DB_HOST: face-db
+      FACE_DB_PORT: 5432
+      FACE_DB_NAME: roomix_face
+      FACE_DB_USER: face_auth
+      FACE_DB_PASSWORD: ${ROOMIX_DB_PASSWORD:?Set ROOMIX_DB_PASSWORD in .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     ports:
       - "127.0.0.1:${FACE_HOST_PORT:-18084}:8084"
+    volumes:
+      - face-models:/app/models
+    depends_on:
+      face-db:
+        condition: service_healthy
+      core-service:
+        condition: service_started
     restart: unless-stopped
 
   api-gateway:
@@ -125,6 +159,7 @@ services:
       RENTAL_SERVICE_URL: http://rental-service:8082
       AI_SERVICE_URL: http://rag-service:8083
       FACE_SERVICE_URL: http://face-auth-service:8084
+      GATEWAY_ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-18080}:8080"
     depends_on:
@@ -141,4 +176,6 @@ services:
 volumes:
   core-db-data:
   rental-db-data:
+  face-db-data:
+  face-models:
   rag-chroma-data:

@@ -15,7 +15,8 @@ cd D:\javaSpring\Roomix\Roomix_Backend
 Copy-Item .env.example .env
 ```
 
-Mở `.env` và đổi ít nhất `ROOMIX_DB_PASSWORD` cùng `ROOMIX_JWT_SECRET`. Hai giá trị mẫu chỉ dùng để thử trên máy cá nhân, không dùng khi đưa lên server. Có thể tạo JWT secret mới bằng PowerShell:
+Mở `.env` và đổi ít nhất `ROOMIX_DB_PASSWORD` cùng `ROOMIX_JWT_SECRET`. Các secret trong mẫu để trống và phải được điền trước khi chạy.
+Điền thêm FACE_SERVICE_TOKEN cùng giá trị cho Core và Face; Compose truyền chung biến này. Có thể tạo JWT secret mới bằng PowerShell:
 
 ```powershell
 $bytes = New-Object byte[] 32
@@ -46,7 +47,7 @@ Compose dùng lại cấu hình Kafka trong `compose.kafka.yml`. Nếu Kafka c�
 | Core OpenAPI | http://localhost:18081/v3/api-docs | core-service:8081 |
 | Rental OpenAPI | http://localhost:18082/v3/api-docs | rental-service:8082 |
 | RAG Swagger | http://localhost:18083/docs | rag-service:8083 |
-| Face OpenAPI | http://localhost:18084/v3/api-docs | face-auth-service:8084 |
+| Face OpenAPI | http://localhost:18084/docs | face-auth-service:8084 |
 | Core PostgreSQL | localhost:15432, database `core_db` | core-db:5432 |
 | Rental PostgreSQL | localhost:15433, database `rental_db` | rental-db:5432 |
 | Kafka | localhost:9092 | kafka:19092 |
@@ -63,7 +64,10 @@ docker compose exec core-db psql -U postgres -d core_db -c "SELECT version FROM 
 docker compose exec rental-db psql -U postgres -d rental_db -c "SELECT version FROM flyway_schema_history ORDER BY installed_rank;"
 ```
 
-Gateway chuyển `/api/ai/chat` sang `/api/v1/chat` của RAG. Trang Swagger ở Gateway tổng hợp Gateway, Core và Rental; RAG có trang `/docs` riêng. Face hiện là service khung, chạy được nhưng chưa có API nhận diện khuôn mặt hoàn chỉnh.
+Gateway chuyển `/api/ai/chat` sang `/api/v1/chat` của RAG. Trang Swagger ở Gateway tổng hợp Gateway, Core và Rental; RAG có trang `/docs` riêng. Face chạy Python/FastAPI, có API đăng ký, liveness và đăng nhập Admin.
+Xem face-auth-service/docs/DOCKER.md cho AI, model cache và database Face riêng.
+Telegram tùy chọn: điền bot/chat chung; bật CORE_TELEGRAM_WORKER_ENABLED=true
+để gửi chữ từ Core. Face chỉ gửi ảnh khi đăng nhập mặt sai hoặc đăng ký thành công.
 
 ## 4 Kafka hoạt động như thế nào
 

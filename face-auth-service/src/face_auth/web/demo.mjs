@@ -44,7 +44,8 @@ const client = new FaceCameraClient({
   video: byId("camera"), canvas: byId("capture"),
   onUpdate(update) {
     if (update.phase === "OPENING_CAMERA") message("Đang xin quyền camera…");
-    if (update.phase === "CAPTURING") message(labels[update.action] || "Đang chờ kết quả…");
+    if (update.phase === "CAPTURING") message((update.reason === "FACE_TOO_BLURRY"
+      ? "Ảnh đang mờ. Giữ đầu yên để camera lấy nét. " : "") + (labels[update.action] || "Đang chờ kết quả…"));
     if (update.phase === "RETRYING") message("Dịch vụ đang bận. Đang thử lại cùng yêu cầu…");
   },
 });

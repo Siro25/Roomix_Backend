@@ -77,7 +77,8 @@ class FaceWorkflow:
                         # Lưu kết quả và ảnh đúng phiên để retry, không nhận mặt lại.
                         core_error = exc
                 else:
-                    response = {"status": "IN_PROGRESS", "action": state["actions"][state["step"]]}
+                    response = {"status": "IN_PROGRESS", "action": state["actions"][state["step"]],
+                                "reason": state.get("feedback")}
         except KeyError as exc:
             raise WorkflowError(404, "CHALLENGE_NOT_FOUND") from exc
         if core_error:
@@ -96,10 +97,12 @@ class FaceWorkflow:
             raise WorkflowError(410, "CHALLENGE_EXPIRED")
         if "pending" in state:
             return {"status": "IN_PROGRESS", "reason": "CORE_PENDING"}
-        return {"status": "IN_PROGRESS", "action": state["actions"][state["step"]]}
+        return {"status": "IN_PROGRESS", "action": state["actions"][state["step"]],
+                "reason": state.get("feedback")}
 
     def _inspect_frame(self, db, state, content):
         state["frames"] += 1
+        state.pop("feedback", None)
         photo = None
         reason = None
         try:
@@ -121,6 +124,19 @@ class FaceWorkflow:
             photo = exc.photo or photo
             if reason == "FRAME_TOO_FAST":
                 raise WorkflowError(429, reason) from exc
+            if reason == "FACE_TOO_BLURRY":
+                # A transition frame can be blurred while the user turns their
+                # head. Do not accept it or end the whole session immediately.
+                now = self.clock()
+                state.setdefault("stepStartedAt", now)
+                state["hits"] = 0
+                if state["frames"] >= 120:
+                    reason = "LIVENESS_FAILED"
+                elif now - state["stepStartedAt"] > 12:
+                    reason = "LIVENESS_TIMEOUT"
+                else:
+                    state["feedback"] = reason
+                    return
 
         vector = mean_vector(state["vectors"]) if reason is None else None
         admin_id = state["adminId"]

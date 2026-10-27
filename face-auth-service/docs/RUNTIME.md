@@ -1,8 +1,8 @@
 # Kiểm tra môi trường chạy AI thật
 
-`.venv` trước đây dùng cho unit test, hiện là Python 3.12 và không có đầy đủ
-PyTorch/FaceNet. `.venv-runtime` là môi trường Python 3.11 chạy AI thật. Đây
-là hai môi trường cài thư viện, không phải hai bản Face Auth.
+Chỉ dùng .venv-runtime (Python 3.11) cho chạy AI và unit test. Môi trường
+.venv cũ đã được xóa sau khi xác nhận không có tiến trình sử dụng và toàn
+bộ 118 test hiện tại đạt trên .venv-runtime. Đây là một bản Face Auth.
 
 ## Cài đặt trên Windows
 
@@ -86,7 +86,7 @@ chạy demo; không bỏ qua liveness hoặc dùng fake trong ứng dụng thậ
 
 ## Vị trí trọng số
 
-- YOLO được tìm trong `models/`, thư mục hiện tại, rồi `legacy/cv/`.
+- YOLO được tìm trong `models/`, thư mục hiện tại, không dùng code điểm danh cũ.
 - Chưa có trọng số: tải model YOLO mặc định vào `models/`.
 - `TORCH_HOME` mặc định là `models/torch/`.
 - `YOLO_CONFIG_DIR` mặc định là `.tmp/ultralytics/`.
@@ -100,10 +100,11 @@ từ nguồn bạn tin cậy. Không tự tải ảnh người để đăng ký 
 Ngày 23/10/2026, Python 3.11.0 và PyTorch 2.2.2+cpu: `pip check` không có
 xung đột; lệnh `check_runtime --models` trả OK. YOLO, MTCNN, FaceNet nạp
 được; encoder trả vector chuẩn hóa 512 chiều; ảnh trống bị detector từ chối.
-Chưa thử ảnh người thật, webcam hoặc đánh giá độ chính xác/liveness thực tế.
+Đây là kết quả của lần kiểm tra runtime ban đầu. Sau đó người dùng đã xác nhận
+webcam thật local/Docker hoạt động; chưa benchmark độ chính xác/chống giả mạo.
 
 80 kiểm thử Python đạt trên chính môi trường runtime với PostgreSQL thật.
 Khởi tạo API bằng các mô hình thật và PostgreSQL tạm thành công: `/health`
 và `/demo` trả 200. Khi Core không khả dụng, tạo challenge trả 503 thay vì
-bỏ qua xác thực. PostgreSQL tạm được tắt sau kiểm tra; chưa tích hợp Core
-Java thật hoặc đăng ký khuôn mặt người dùng.
+bỏ qua xác thực. PostgreSQL tạm được tắt sau kiểm tra. Kết quả tích hợp Core/Gateway và webcam
+về sau được cập nhật tại LOCAL_ACCEPTANCE.md.

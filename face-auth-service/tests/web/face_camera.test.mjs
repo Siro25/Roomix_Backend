@@ -25,6 +25,16 @@ function setup(responses) {
 const challenge = { body: { challengeId: "challenge", actions: ["CENTER"], expiresAt: 100 } };
 const input = { authSessionId: "core-session-id-12345", purpose: "LOGIN" };
 
+test("blurred transition frame keeps the camera open and reports recovery feedback", async () => {
+  const app = setup([challenge,
+    { body: { status: "IN_PROGRESS", action: "CENTER", reason: "FACE_TOO_BLURRY" } },
+    { body: { status: "SUCCEEDED" } }]);
+  const result = await app.client.start(input);
+  assert.equal(result.status, "SUCCEEDED");
+  assert.ok(app.updates.some(update => update.phase === "CAPTURING" && update.reason === "FACE_TOO_BLURRY"));
+  assert.equal(app.stopped(), 1);
+});
+
 test("login sends sequential frames without JWT and closes camera", async () => {
   const app = setup([challenge, { body: { status: "IN_PROGRESS", action: "TURN_LEFT" } },
     { body: { status: "SUCCEEDED" } }]);

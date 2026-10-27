@@ -22,6 +22,8 @@ ban đầu, không tạo một bản Face Auth thứ hai. Chạy mọi lệnh t�
 | Trang thử camera | `src/face_auth/web/`, `docs/CAMERA_DEMO.md` |
 | Cài/chẩn đoán môi trường | `scripts/setup_runtime.ps1`, `src/face_auth/check_runtime.py`, `docs/RUNTIME.md` |
 | Cấu hình | `src/face_auth/config.py`, `.env.example` |
+| Docker Python và Compose | `Dockerfile`, `docs/DOCKER.md`, `../compose.yml` |
+| Tiến độ tích hợp và kiểm tra trên máy thật | `docs/LOCAL_ACCEPTANCE.md` |
 
 ## Đường dẫn cũ và mới
 
@@ -31,17 +33,11 @@ ban đầu, không tạo một bản Face Auth thứ hai. Chạy mọi lệnh t�
 | `src/web/backend/main.py` | `src/face_auth/main.py` và `api/routes.py` |
 | `src/web/backend/workflow.py` | `src/face_auth/services/face_workflow.py` |
 | `src/web/backend/storage.py` | `src/face_auth/db/storage.py` |
-| `src/web/backend/database.py`, `models.py`, `migrate_pkl.py` | `legacy/backend/` |
-| `src/web/backend/camera_service.py`, `security_service.py` | `legacy/backend/` |
-| `src/cv/` | `legacy/cv/` |
-| `src/web/frontend/` | `legacy/dashboard/` |
-| `src/tests/test_telegram.py` | `tests/legacy/test_telegram.py` |
-| `_maven_backup/` | `legacy/maven/` |
-| `src/README.md` | `legacy/README.original.md` |
 
-Trọng số YOLO được tìm trong `models/` ở gốc dự án, thư mục chạy hiện tại,
-rồi `legacy/cv/`. Liveness và embedding của luồng chính dùng cùng mô hình
-trong `ai/face_service.py`.
+Code điểm danh, dashboard cũ và bộ khung Maven đã được bỏ khỏi cây source.
+Bản gốc lưu cục bộ trong `.tmp/review-archive/original-unused-source.zip`,
+không chạy cùng ứng dụng và không đưa vào Git. Pipeline AI hiện tại vẫn được
+phát triển từ code ban đầu. Trọng số được tìm trong `models/` rồi thư mục chạy.
 
 ## Đọc code theo thứ tự
 
@@ -51,5 +47,6 @@ trong `ai/face_service.py`.
 4. `db/` và `integrations/`: lưu dữ liệu, gọi dịch vụ ngoài.
 
 PostgreSQL được triển khai trong `db/storage.py`, schema ở `db/schema.sql`.
-Xem `DATABASE.md` để cấu hình. Hiệu chỉnh AI thực tế và tích hợp Core thật
-còn ở các chặng sau, cần người dùng cho phép tiếp tục.
+Xem `DATABASE.md` để cấu hình. Core/Gateway/Face đã được kiểm tra liên thông;
+người dùng xác nhận webcam thật và Telegram. Xem `LOCAL_ACCEPTANCE.md` cho
+giới hạn kiểm chứng, `HANDOFF.md` để bàn giao và `FINAL_REVIEW.md` cho rà soát Git.

@@ -150,12 +150,14 @@ export class FaceCameraClient {
       }
       this.challengeId = challenge.challengeId;
       let action = challenge.actions[0];
+      let feedback;
       while (!signal.aborted) {
         if (this.now() >= challenge.expiresAt * 1000) throw new FaceApiError("CHALLENGE_EXPIRED", 410);
-        this.onUpdate({ phase: "CAPTURING", action });
+        this.onUpdate({ phase: "CAPTURING", action, reason: feedback });
         const result = await this.sendFrame(await this.capture(), signal);
         if (result.status !== "IN_PROGRESS") return result;
         action = result.action;
+        feedback = result.reason;
         await this.wait(350, signal);
       }
       throw new DOMException("Stopped", "AbortError");

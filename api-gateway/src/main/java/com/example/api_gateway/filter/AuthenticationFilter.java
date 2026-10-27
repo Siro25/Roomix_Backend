@@ -20,6 +20,15 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     private static final String PUBLIC_ROOM_PREFIX = "/api/rooms/";
     private static final String WEB_SOCKET_ENDPOINT = "/api/ws";
 
+    // Login has no Admin JWT yet. Face validates the Core session itself;
+    // enrollment still requires a PASSWORD JWT when the challenge is created.
+    private boolean isFaceChallengeRequest(String method, String path) {
+        if ("POST".equals(method) && "/api/face/challenges".equals(path)) return true;
+        if ("GET".equals(method) && path.matches("/api/face/challenges/[A-Za-z0-9_-]{43}")) return true;
+        return "POST".equals(method)
+                && path.matches("/api/face/challenges/[A-Za-z0-9_-]{43}/frames");
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
@@ -28,6 +37,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         if ("OPTIONS".equalsIgnoreCase(method)
                 || !path.startsWith(API_PREFIX)
                 || path.startsWith(PUBLIC_AUTH_PREFIX)
+                || isFaceChallengeRequest(method, path)
                 || path.equals(WEB_SOCKET_ENDPOINT)
                 || path.startsWith(WEB_SOCKET_ENDPOINT + "/")
                 || ("GET".equalsIgnoreCase(method)

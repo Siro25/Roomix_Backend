@@ -80,6 +80,24 @@ class FaceServiceTests(unittest.TestCase):
         self.assertTrue(error.exception.photo.startswith(b"\xff\xd8"))
         self.service.facenet.assert_not_called()
 
+    def test_mtcnn_object_arrays_are_converted_before_quality_checks(self):
+        self.service.mtcnn.detect.return_value = (
+            self.boxes.astype(object), np.array([0.99], dtype=object), np.array([points()]))
+        observation = self.analyze()
+        self.assertEqual(len(observation.embedding), 512)
+        self.assertEqual(observation.pose, "CENTER")
+        extracted_boxes = self.service.mtcnn.extract.call_args.args[1]
+        self.assertEqual(extracted_boxes.dtype, np.float64)
+        np.testing.assert_array_equal(extracted_boxes, self.boxes)
+
+    def test_non_finite_object_coordinates_are_rejected_before_encoder(self):
+        boxes = self.boxes.astype(object)
+        boxes[0, 0] = float("nan")
+        self.service.mtcnn.detect.return_value = boxes, np.array([0.99], dtype=object), np.array([points()])
+        with self.assertRaisesRegex(FaceRejected, "LOW_FACE_QUALITY"):
+            self.analyze()
+        self.service.facenet.assert_not_called()
+
     def test_two_faces_are_still_rejected_when_yolo_misses(self):
         self.service.detect_faces.return_value = []
         self.service.mtcnn.detect.return_value = np.vstack([self.boxes, self.boxes]), [0.99, 0.99], None

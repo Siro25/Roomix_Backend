@@ -13,6 +13,23 @@ nhập mặt thành công; xem core-service/docs/TELEGRAM.md. Hai service đọc
 hình bot/chat riêng, có thể dùng cùng bot/chat. Không gửi Telegram từ frontend.
 Trường hợp không giải mã được file ảnh sẽ không có ảnh để gửi.
 
+## Kiểm tra trên giao diện thật
+
+| Thao tác | Thông báo mong đợi |
+|---|---|
+| Admin nhập sai mật khẩu | Core gửi chữ, không có ảnh |
+| Admin nhập đúng mật khẩu | Core gửi chữ, không có ảnh |
+| Admin đăng nhập bằng mặt thành công | Core gửi chữ, không có ảnh |
+| Đăng nhập mặt không đạt, ví dụ hết thời gian liveness | Face gửi ảnh nếu có frame hợp lệ để gửi |
+| Admin đăng ký lại mặt thành công | Face gửi ảnh; mẫu mặt cũ của chính tài khoản được thay |
+| Đăng ký mặt không đạt | Không gửi ảnh Telegram |
+
+Lần thử Telegram local có thể bật worker bằng biến môi trường của tiến trình
+mà không sửa `.env`. Sau khi kiểm tra đạt, đặt `CORE_TELEGRAM_WORKER_ENABLED=true`
+trong cấu hình Core dùng để chạy hằng ngày. Face bật worker khi có đủ bot token
+và chat ID. Worker có thể cần vài giây; xem trạng thái outbox để phân biệt
+đang chờ, đã gửi và đã hết số lần thử. Không đưa token hoặc ảnh thật vào log.
+
 ## Cấu hình
 
 ```powershell
@@ -21,8 +38,8 @@ $env:TELEGRAM_CHAT_ID = 'CHAT_ID_NHAN_CANH_BAO'
 ```
 
 Khi đủ hai biến, worker được chạy cùng ứng dụng. Khi thiếu một trong hai,
-không tạo sự kiện ảnh mới hoặc khởi chạy worker gửi. Không đọc token từ
-`legacy/cv/security_config.json`; cấu hình bản cũ không áp dụng cho service.
+không tạo sự kiện ảnh mới hoặc khởi chạy worker gửi. Cấu hình chỉ đọc từ
+environment hiện tại; code điểm danh và cấu hình cũ đã được bỏ.
 
 ## Hàng đợi PostgreSQL
 

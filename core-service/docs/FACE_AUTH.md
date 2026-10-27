@@ -1,6 +1,3 @@
-> Sau khi tích hợp main: xem [MAIN_INTEGRATION.md](MAIN_INTEGRATION.md).
-> Các lệnh bootstrap Admin, CORE_DB_INIT_MODE và cấu hình JWT cũ bên dưới không còn áp dụng.
-
 # Core tích hợp Face Python
 
 Core quản lý phiên/tài khoản/JWT. Face Python quản lý ảnh, liveness, nhận
@@ -64,12 +61,8 @@ lỗi lưu DB, retry cùng kết quả; chưa có transaction phân tán giữa 
 Thêm FACE_SERVICE_TOKEN vào environment Core, dùng giá trị đang có trong
 `.env` Face Python. Spring Boot không tự nạp .env. Không ghi bí mật vào Git.
 
-Database Core cần bảng `admin_face_sessions` từ
-`src/main/resources/face-sessions.sql`. Với DB đã tạo ở chặng trước, chạy
-script này qua Query Tool của đúng core_db, hoặc bật CORE_DB_INIT_MODE=always
-một lần sau khi kiểm tra schema rồi tắt về never. Script chỉ CREATE IF NOT
-EXISTS; không xóa users và không đổi bảng Face. Đây là bảng mới, chưa tự
-chạy trên database người dùng trong phiên phát triển.
+Database Core tạo bảng admin_face_sessions bằng Flyway V7; V8 tạo outbox
+Telegram. Không chạy face-sessions.sql hoặc CORE_DB_INIT_MODE của bộ khung cũ.
 
 Core giữ metadata phiên/hash, không có dữ liệu sinh trắc. Có thể dọn phiên
 hết hạn hơn một ngày trong database Core:
@@ -86,13 +79,11 @@ Lỗi database trả 503, không tự coi là đăng nhập thành công.
 
 ## Kết quả kiểm tra
 
-Đã có kiểm thử Java với PostgreSQL riêng cho tạo/validate/callback/complete,
-idempotency, đồng thời, tài khoản khóa và khác phương thức đăng nhập.
-Core hiện có 63 test Java đạt, không SKIP, gồm phần thông báo Telegram chữ.
-Kiểm tra bổ sung ở chặng Face dùng JAR Core chạy HTTP thật,
-Face Python/TestClient, hai schema test và analyzer giả lập: ENROLL lưu hồ sơ,
-LOGIN cấp JWT/đọc /me, complete lại cùng JWT, JWT FACE không được ENROLL,
-callback thất bại không cấp JWT. Không mở camera hoặc gửi Telegram trong test.
-Không thay database sản phẩm hoặc tạo hồ sơ người thật. Thông báo chữ cho
-mật khẩu đúng/sai và LOGIN mặt thành công đã có, xem TELEGRAM.md; chưa gửi
-bot thật. Cấu hình Gateway/Docker và webcam người thật vẫn cần kiểm tra tiếp.
+Core sau tích hợp main có 57 test PostgreSQL/JWT/Face/Telegram đạt. Unit test
+mock HTTP Telegram. Đã kiểm tra callback, idempotency, complete đồng thời,
+tài khoản khóa và JWT FACE không được ENROLL. Luồng liên service tự động dùng
+analyzer giả để kiểm tra giao tiếp; lần thử webcam dùng AI thật.
+
+Người dùng đã xác nhận đăng ký/đăng nhập webcam và Telegram thật, cả với backend
+Docker. Xem face-auth-service/docs/LOCAL_ACCEPTANCE.md từ gốc backend để biết
+phạm vi, kết quả và giới hạn. Chưa benchmark nhận dạng/chống giả mạo toàn diện.

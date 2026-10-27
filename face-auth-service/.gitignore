@@ -45,3 +45,16 @@ data/
 *.pkl
 *.pt
 *.task
+
+# Private biometric exports, runtime and archives
+models/
+*.npy
+*.npz
+*.pickle
+*.pth
+*.sqlite*
+*.dump
+*.backup
+*.log
+.pytest_cache/
+.ruff_cache/

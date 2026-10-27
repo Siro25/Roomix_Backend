@@ -42,5 +42,7 @@ listener/admin auto-create, mock Telegram HTTP. Không dùng database thật.
 Các test Face giữ kiểm tra quyền, khóa tài khoản, liveness-result callback,
 session hết hạn, callback lặp, secret sai và complete đồng thời.
 
-Chưa xác nhận webcam thật, gửi Telegram thật, luồng qua Gateway/Frontend
-hoặc Docker. Cần kiểm tra các phần này trước khi gọi tích hợp hoàn tất.
+Đã kiểm tra liên thông Gateway/Frontend và Compose Core/Gateway/Face. Người dùng
+đã xác nhận webcam thật và Telegram hoạt động, cả với backend Docker. Chi tiết
+và giới hạn tại face-auth-service/docs/LOCAL_ACCEPTANCE.md từ gốc backend.
+Chưa đánh giá toàn bộ nghiệp vụ Rental/RAG hoặc benchmark chống giả mạo.

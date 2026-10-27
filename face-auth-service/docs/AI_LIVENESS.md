@@ -28,6 +28,10 @@ thông số bảo đảm độ chính xác từ thư viện.
 - Mỗi bước cần hai frame liên tiếp đạt và cách nhau ít nhất 200 ms phía server.
 - Mỗi bước tối đa 12 giây từ frame đầu hoặc khi bước trước hoàn tất.
 - Frame sai hướng xóa số lần đạt liên tiếp của bước hiện tại.
+- Frame `FACE_TOO_BLURRY` do chuyển động được bỏ qua, reset số frame đạt liên
+  tiếp và trả hướng dẫn giữ yên trong cùng phiên. Không lấy embedding/ảnh mờ
+  làm mẫu đăng ký. Giữ giới hạn 12 giây mỗi bước, 120 frame và hạn phiên;
+  ảnh mờ liên tục vẫn làm thất bại, không gia hạn vòng lặp vô hạn.
 - Vector hồ sơ chỉ lấy khi cần nhìn chính diện và frame thực sự chính diện.
 - Reference danh tính được chốt từ frame chính diện, không từ mặt quay đầu
   gửi trước khi bắt đầu đúng thử thách. Giữ kiểm tra cùng người xuyên suốt.
@@ -48,7 +52,8 @@ số frame liên tiếp và timeout. `tests/test_workflow.py` kiểm tra kết q
 liveness được đưa vào luồng và sự kiện Telegram đúng cách.
 
 Đã chạy kiểm tra khởi tạo và inference thật trên CPU bằng tensor và ảnh
-trống (xem `RUNTIME.md`). Chưa thử webcam hoặc ảnh người thật.
+trống (xem `RUNTIME.md`). Sau đó người dùng đã xác nhận đăng ký/đăng nhập webcam thật, cả qua Docker.
+Chưa có benchmark độ chính xác hoặc chống giả mạo toàn diện.
 Không dùng test fake để kết luận độ chính xác nhận dạng. Trước demo cần thử
 người đã đăng ký, người chưa đăng ký, nhiều người, ánh sáng và webcam thực tế.
 

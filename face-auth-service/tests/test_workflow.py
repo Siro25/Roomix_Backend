@@ -228,6 +228,49 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(self.core.results[0]["verified"])
         self.assertEqual(self.notifications()[0][0], "FACE_LOGIN_FAILED")
 
+    def test_motion_blur_can_recover_without_failing_or_notifying_core(self):
+        challenge = self.start("ENROLL")
+        self.analyzer.failure = "FACE_TOO_BLURRY"
+        response = self.frame(challenge, "CENTER")
+        self.assertEqual(response["status"], "IN_PROGRESS")
+        self.assertEqual(response["reason"], "FACE_TOO_BLURRY")
+        self.assertEqual(self.core.results, [])
+        self.assertEqual(self.notifications(), [])
+        self.analyzer.failure = None
+        self.assertEqual(self.complete(challenge)["status"], "SUCCEEDED")
+
+    def test_motion_blur_resets_consecutive_good_frames(self):
+        challenge = self.start("ENROLL")
+        self.frame(challenge, "CENTER")
+        self.analyzer.failure = "FACE_TOO_BLURRY"
+        self.frame(challenge, "CENTER")
+        self.analyzer.failure = None
+        self.frame(challenge, "CENTER")
+        state = self.store.read_challenge(challenge["challengeId"])
+        self.assertEqual(state["step"], 0)
+        self.assertEqual(state["hits"], 1)
+
+    def test_persistent_blur_still_times_out_and_cannot_enroll(self):
+        challenge = self.start("ENROLL")
+        self.analyzer.failure = "FACE_TOO_BLURRY"
+        self.frame(challenge, "CENTER")
+        self.now += 13
+        response = self.frame(challenge, "CENTER")
+        self.assertEqual(response["status"], "FAILED")
+        self.assertEqual(response["reason"], "LIVENESS_TIMEOUT")
+        self.assertFalse(self.core.results[0]["verified"])
+        with self.store.connect() as db:
+            self.assertEqual(self.store.profiles(db), {})
+
+    def test_blur_cannot_bypass_total_frame_limit(self):
+        challenge = self.start("ENROLL")
+        with self.store.edit_challenge(challenge["challengeId"]) as (_, state):
+            state["frames"] = 119
+        self.analyzer.failure = "FACE_TOO_BLURRY"
+        response = self.frame(challenge, "CENTER")
+        self.assertEqual(response["status"], "FAILED")
+        self.assertEqual(response["reason"], "LIVENESS_FAILED")
+
     def test_center_frames_during_turn_are_not_added_to_profile(self):
         challenge = self.start("ENROLL")
         self.frame(challenge, "CENTER")

@@ -66,7 +66,12 @@ try {
 }
 finally {
     foreach ($name in $previousVariables.Keys) {
-        [Environment]::SetEnvironmentVariable($name, $previousVariables[$name], 'Process')
+        if ($null -eq $previousVariables[$name]) {
+            # Explicit removal also works on PowerShell 7/.NET versions supporting empty env values.
+            Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
+        } else {
+            [Environment]::SetEnvironmentVariable($name, $previousVariables[$name], 'Process')
+        }
     }
     Pop-Location
 }

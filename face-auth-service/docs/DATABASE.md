@@ -85,8 +85,8 @@ CREATE SCHEMA trong database đó. Không trỏ URL test vào database sản ph�
 
 ```powershell
 $env:TEST_DATABASE_URL = 'postgresql://face_test:MAT_KHAU@localhost:5432/roomix_face_test'
-.\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv-runtime\Scripts\python.exe -m pip install -r requirements-test.txt
+.\.venv-runtime\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 Mỗi test tạo schema ngẫu nhiên `face_test_<uuid>` và xóa chính schema đó khi

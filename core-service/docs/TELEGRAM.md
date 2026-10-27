@@ -1,6 +1,3 @@
-> Sau khi tích hợp main: xem [MAIN_INTEGRATION.md](MAIN_INTEGRATION.md).
-> Các lệnh bootstrap Admin, CORE_DB_INIT_MODE và cấu hình JWT cũ bên dưới không còn áp dụng.
-
 # Thông báo đăng nhập Admin qua Telegram
 
 ## Phân công Core và Face
@@ -34,12 +31,8 @@ riêng; Core không tự đọc .env của Face. Cả hai giá trị trống s�
 không giữ thông báo chờ trong DB. Điền thiếu một giá trị sẽ dừng startup để
 báo cấu hình chưa đầy đủ. Không đưa bot token vào frontend hoặc Git.
 
-Database core_db cần bảng `auth_telegram_outbox` từ
-`src/main/resources/telegram-outbox.sql`. Với DB đã có, chạy riêng SQL này
-qua Query Tool trước khi bật bot, hoặc bật CORE_DB_INIT_MODE=always một lần
-sau khi đối chiếu schema rồi tắt về never. File SQL chỉ CREATE IF NOT EXISTS,
-không xóa users hoặc bảng phiên Face. Chặng phát triển không chạy SQL trên
-database của người dùng.
+Database core_db dùng Flyway V8__create_auth_telegram_outbox.sql để tạo bảng.
+Không chạy telegram-outbox.sql hoặc CORE_DB_INIT_MODE của bộ khung cũ.
 
 CORE_TELEGRAM_WORKER_ENABLED=false dừng worker nhưng vẫn ghi hàng đợi nếu
 đã có đủ bot/chat. Chỉ dùng khi bảo trì hoặc kiểm thử; muốn tắt hoàn toàn thì
@@ -48,8 +41,8 @@ CORE_TELEGRAM_WORKER_ENABLED=false dừng worker nhưng vẫn ghi hàng đợi n
 ## Hàng đợi và retry
 
 - Request đăng nhập chỉ ghi PostgreSQL, không chờ HTTP Telegram.
-- Sự kiện và cấp JWT dùng chung transaction. Riêng AuthFailure 401 cho phép
-  commit sự kiện thất bại, không rollback nó khi trả lỗi đăng nhập.
+- Sự kiện và cấp JWT dùng chung transaction. Thông báo sai mật khẩu dùng
+  transaction riêng để không mất sự kiện khi request đăng nhập thất bại.
 - FACE_LOGIN_SUCCEEDED chỉ ghi ở lần đầu complete cấp JWT. Retry complete
   không tạo thêm sự kiện; bảng còn có event_key UNIQUE để chặn ghi trùng.
 - Mỗi lần gọi đăng nhập mật khẩu là một lần thử riêng. Frontend không tự
@@ -93,8 +86,9 @@ mock. Có kiểm tra worker schedule bật/tắt, sai mật khẩu vẫn giữ s
 retry JWT không nhân bản thông báo, HTTP lỗi/JSON sai, 429, hết TTL, restart
 worker và hai worker đồng thời. Không gọi bot thật hoặc gửi tin nhắn thật.
 
-Tổng 63 kiểm thử Core đạt, không SKIP (gồm 42 kiểm thử xác thực/Face trước
-đó và 21 kiểm thử thông báo/scheduler mới). Database test đã được dọn sau chạy.
+Bộ Core sau tích hợp main có 57 kiểm thử đạt. Người dùng đã xác nhận thông báo
+thật trong lần thử local và Docker; xem face-auth-service/docs/LOCAL_ACCEPTANCE.md
+từ gốc backend. Việc chạy unit test không tự gửi Telegram thật.
 
 API sử dụng: [sendMessage](https://core.telegram.org/bots/api#sendmessage)
 và [ResponseParameters.retry_after](https://core.telegram.org/bots/api#responseparameters).

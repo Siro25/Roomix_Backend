@@ -14,7 +14,6 @@ import threading
 from dataclasses import dataclass
 import cv2
 import numpy as np
-from PIL import Image
 from src.face_auth.ai.image_input import decode_image
 from src.face_auth.ai.errors import FaceRejected, FaceUnavailable
 from src.face_auth.ai.head_pose import classify_pose
@@ -57,17 +56,15 @@ class FaceService:
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu'
         )
-        self.recognition_threshold = 0.80
 
         print(f"[FaceService] Initializing on {self.device}...")
 
         # ===== YOLOv8 Face Detection =====
-        # Tìm model file ở thư mục hiện tại hoặc cv/
+        # Trọng số nằm trong models/ hoặc thư mục chạy hiện tại.
         (project_root / "models").mkdir(exist_ok=True)
-        cv_dir = str(project_root / "legacy" / "cv")
         yolo_path = self._find_model(
             ["yolov8n-face.pt", "yolov8n.pt"],
-            [str(project_root / "models"), os.getcwd(), cv_dir]
+            [str(project_root / "models"), os.getcwd()]
         )
         self.yolo = YOLO(yolo_path)
         self._yolo_is_face = self._is_face_model(yolo_path)
@@ -83,10 +80,6 @@ class FaceService:
             pretrained='vggface2'
         ).eval().to(self.device)
         print("[FaceService] FaceNet loaded (512-d)")
-
-        # Embedding cache
-        self._mean_embeddings = {}  # {user_id: np.ndarray}
-        self._cache_dirty = True
 
         print("[FaceService] Ready!")
 
@@ -105,6 +98,12 @@ class FaceService:
                     raise FaceRejected("MULTIPLE_FACES")
                 if not yolo_boxes:
                     raise FaceRejected("NO_FACE")
+                # MTCNN may return dtype=object even for one face. Normalize the
+                # numeric arrays before NumPy quality checks and face extraction.
+                boxes = np.asarray(boxes, dtype=np.float64)
+                probabilities = np.asarray(probabilities, dtype=np.float64)
+                if boxes.shape != (1, 4) or probabilities.shape != (1,):
+                    raise FaceRejected("LOW_FACE_QUALITY")
                 x1, y1, x2, y2 = boxes[0]
                 if not np.isfinite(boxes[0]).all() or not np.isfinite(probabilities[0]):
                     raise FaceRejected("LOW_FACE_QUALITY")
@@ -181,32 +180,6 @@ class FaceService:
     # EMBEDDING
     # ========================================
 
-    def extract_embedding(self, frame_bgr, box=None):
-        """
-        Trích xuất FaceNet 512-d embedding.
-        Returns: np.ndarray (512,) hoặc None
-        """
-        try:
-            rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-            pil_img = Image.fromarray(rgb)
-
-            if box is not None:
-                x1, y1, x2, y2 = box[:4]
-                pil_img = pil_img.crop((
-                    max(0, x1), max(0, y1),
-                    min(frame_bgr.shape[1], x2),
-                    min(frame_bgr.shape[0], y2)
-                ))
-
-            face_tensor = self.mtcnn(pil_img)
-            if face_tensor is None:
-                return None
-
-            return self._encode_face_tensor(face_tensor)
-        except (FaceRejected, RuntimeError, ValueError):
-            # Tiện ích cũ trả None khi không trích xuất được mặt.
-            return None
-
     def _encode_face_tensor(self, face_tensor):
         """Chỉ mã hóa một mặt; không tự chọn mặt đầu tiên khi có nhiều mặt."""
         if face_tensor is None:
@@ -225,97 +198,3 @@ class FaceService:
             return np.asarray(normalize(vector.tolist()), dtype=np.float32)
         except ValueError as exc:
             raise FaceRejected("INVALID_EMBEDDING") from exc
-
-    # ========================================
-    # RECOGNITION
-    # ========================================
-
-    def update_cache(self, users_embeddings):
-        """
-        Cập nhật cache mean embeddings.
-        Args:
-            users_embeddings: dict {user_id: list[np.ndarray]}
-        """
-        self._mean_embeddings = {}
-        for uid, embs in users_embeddings.items():
-            if embs:
-                mean = np.mean(embs, axis=0)
-                norm = np.linalg.norm(mean)
-                if norm > 0:
-                    mean = mean / norm
-                self._mean_embeddings[uid] = mean
-        self._cache_dirty = False
-        print(f"[FaceService] Cache updated: {len(self._mean_embeddings)} users")
-
-    def invalidate_cache(self):
-        self._cache_dirty = True
-
-    @property
-    def cache_dirty(self):
-        return self._cache_dirty
-
-    def recognize(self, embedding):
-        """
-        So sánh embedding với cache.
-        Returns: (user_id, confidence) hoặc (-1, best_sim)
-        """
-        if not self._mean_embeddings:
-            return -1, 0.0
-
-        best_uid, best_sim = -1, -1.0
-
-        for uid, mean in self._mean_embeddings.items():
-            sim = float(np.dot(embedding, mean))
-            l2 = float(np.linalg.norm(embedding - mean))
-            combined = 0.7 * sim + 0.3 * max(0, 1.0 - l2 / 2.0)
-            if combined > best_sim:
-                best_sim = combined
-                best_uid = uid
-
-        if best_sim >= self.recognition_threshold:
-            return best_uid, float(best_sim)
-
-        return -1, float(max(0, best_sim))
-
-    def verify_embedding(self, user_id, embedding):
-        """Compare a face against one claimed identity (1:1 verification)."""
-        mean = self._mean_embeddings.get(user_id)
-        if mean is None:
-            return False, 0.0
-        similarity = float(np.dot(embedding, mean))
-        distance = float(np.linalg.norm(embedding - mean))
-        score = 0.7 * similarity + 0.3 * max(0, 1.0 - distance / 2.0)
-        return score >= self.recognition_threshold, max(0.0, score)
-
-    def detect_and_recognize(self, frame_bgr):
-        """
-        Full pipeline: detect → embed → recognize.
-        Returns: list of dict {box, user_id, confidence, embedding}
-        """
-        faces = self.detect_faces(frame_bgr)
-        results = []
-
-        for face in faces:
-            x1, y1, x2, y2, det_conf = face
-            emb = self.extract_embedding(frame_bgr, (x1, y1, x2, y2))
-
-            if emb is None:
-                results.append({
-                    "box": [x1, y1, x2, y2],
-                    "user_id": -1,
-                    "confidence": 0.0,
-                    "detection_conf": det_conf,
-                    "embedding": None
-                })
-                continue
-
-            user_id, rec_conf = self.recognize(emb)
-            results.append({
-                "box": [x1, y1, x2, y2],
-                "user_id": user_id,
-                "confidence": rec_conf,
-                "detection_conf": det_conf,
-                "embedding": emb
-            })
-
-        return results

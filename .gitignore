@@ -1,1 +1,12 @@
 .env.*
+
+# Local configuration and generated runtime files
+.env
+!.env.example
+**/node_modules/
+**/.venv/
+**/.venv-*/
+**/.tmp/
+**/target/
+**/.next/
+**/__pycache__/
