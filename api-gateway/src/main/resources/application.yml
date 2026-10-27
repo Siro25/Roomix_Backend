@@ -36,7 +36,7 @@ spring:
             - id: rental-service
               uri: ${RENTAL_SERVICE_URL:http://localhost:8082}
               predicates:
-                - Path=/api/rentals/**,/api/tenancies/**,/api/invoices/**,/api/chat/**
+                - Path=/api/rentals/**,/api/tenancies/**,/api/invoices/**
 
             - id: ai-service
               uri: ${AI_SERVICE_URL:http://localhost:8083}
