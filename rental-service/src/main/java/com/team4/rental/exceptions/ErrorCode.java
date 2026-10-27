@@ -29,6 +29,11 @@ public enum ErrorCode {
     VNPAY_NOT_CONFIGURED(2020, HttpStatus.SERVICE_UNAVAILABLE, "Chưa cấu hình tài khoản VNPAY sandbox"),
     VNPAY_PAYMENT_PENDING(2021, HttpStatus.CONFLICT, "Hóa đơn đang có giao dịch VNPAY chờ kết quả"),
     VNPAY_AMOUNT_INVALID(2022, HttpStatus.BAD_REQUEST, "Số tiền hóa đơn không phù hợp để thanh toán VNPAY"),
+    LANDLORD_CONTACT_INCOMPLETE(
+            2023,
+            HttpStatus.CONFLICT,
+            "Chủ trọ cần cập nhật số điện thoại và Zalo trước khi chấp nhận yêu cầu"),
+    CONTACT_CARD_NOT_FOUND(2024, HttpStatus.NOT_FOUND, "Không tìm thấy danh thiếp cho yêu cầu thuê này"),
     INTERNAL_ERROR(2099, HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống");
     private final int code;
     private final HttpStatus status;
