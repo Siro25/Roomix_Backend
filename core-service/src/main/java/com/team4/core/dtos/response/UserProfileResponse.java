@@ -24,6 +24,7 @@ public class UserProfileResponse {
     String fullName;
     String phoneNumber;
     String avatarUrl;
+    String zalo;
     Role role;
     UserStatus status;
     Instant createdAt;
@@ -37,6 +38,7 @@ public class UserProfileResponse {
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
                 .avatarUrl(user.getAvatarUrl())
+                .zalo(user.getZalo())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
