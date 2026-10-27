@@ -5,7 +5,9 @@ import com.team4.core.dtos.request.HouseRequest;
 import com.team4.core.dtos.response.ApiResponse;
 import com.team4.core.dtos.response.FloorResponse;
 import com.team4.core.dtos.response.HouseResponse;
+import com.team4.core.dtos.response.LandlordPropertyResponse;
 import com.team4.core.services.LandlordPropertyService;
+
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -41,7 +43,16 @@ public class LandlordPropertyController {
                 .build();
     }
 
+    @GetMapping("/overview")
+    public ApiResponse<List<LandlordPropertyResponse>> getOverview(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.<List<LandlordPropertyResponse>>builder()
+                .message("Lấy danh sách bất động sản và phòng thành công")
+                .data(landlordPropertyService.getOverview(UUID.fromString(jwt.getSubject())))
+                .build();
+    }
+
     @GetMapping("/{houseId}")
+
     public ApiResponse<HouseResponse> getHouse(@PathVariable UUID houseId,
             @AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.<HouseResponse>builder()

@@ -4,6 +4,7 @@ import com.team4.core.dtos.request.FloorRequest;
 import com.team4.core.dtos.request.HouseRequest;
 import com.team4.core.dtos.response.FloorResponse;
 import com.team4.core.dtos.response.HouseResponse;
+import com.team4.core.dtos.response.LandlordPropertyResponse;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +13,10 @@ public interface LandlordPropertyService {
 
     List<HouseResponse> getHouses(UUID landlordId);
 
+    List<LandlordPropertyResponse> getOverview(UUID landlordId);
+
     HouseResponse getHouse(UUID landlordId, UUID houseId);
+
 
     HouseResponse updateHouse(UUID landlordId, UUID houseId, HouseRequest request);
 
