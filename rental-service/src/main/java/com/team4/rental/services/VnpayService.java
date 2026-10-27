@@ -70,7 +70,10 @@ public class VnpayService {
         var pending = attempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING);
         if (pending.isPresent()) {
             var existing = pending.get();
-            if (existing.getExpiresAt().isAfter(now)) {
+            String encodedReturnUrl = URLEncoder.encode(config.getReturnUrl(), StandardCharsets.UTF_8);
+            boolean usesCurrentReturnUrl = existing.getPaymentUrl() != null
+                    && existing.getPaymentUrl().contains("vnp_ReturnUrl=" + encodedReturnUrl);
+            if (existing.getExpiresAt().isAfter(now) && usesCurrentReturnUrl) {
                 return VnpayPaymentResponse.builder().txnRef(existing.getTxnRef())
                         .paymentUrl(existing.getPaymentUrl()).expiresAt(existing.getExpiresAt()).build();
             }
@@ -174,6 +177,11 @@ public class VnpayService {
                     .message("Không tìm thấy giao dịch").build();
         }
         var payment = attempt.get();
+        if (config.isConfirmOnReturn() && payment.getStatus() == VnpayPaymentStatus.PENDING) {
+            processIpn(parameters);
+            payment = attempts.findByTxnRef(parameters.get("vnp_TxnRef"))
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        }
         return VnpayReturnResponse.builder().invoiceId(payment.getInvoiceId())
                 .txnRef(payment.getTxnRef()).responseCode(parameters.get("vnp_ResponseCode"))
                 .paymentStatus(payment.getStatus().name())
