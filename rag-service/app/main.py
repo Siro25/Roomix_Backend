@@ -1,11 +1,13 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api import api_router
-from app.api.routes_ingest import init_sample_data
+from app.api.routes_ingest import seed_policies, seed_sample_rooms
 from app.core.vector_store import vector_store
+from app.services.core_room_sync import core_room_sync
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,20 +16,51 @@ logging.basicConfig(
 logger = logging.getLogger("roomix-rag")
 
 
+async def _room_sync_loop():
+    """Keep the room index in step with core-service (the source of truth)."""
+    interval = settings.CORE_SYNC_INTERVAL_SECONDS
+    while True:
+        try:
+            await asyncio.to_thread(core_room_sync.sync)
+            delay = interval
+        except Exception as e:
+            logger.warning(f"Room sync failed, will retry soon: {e}")
+            delay = min(interval, 30)
+        await asyncio.sleep(delay)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Roomix RAG Service...")
-    # Auto-load sample data on startup if collections are empty
+    # Re-embed stored documents if the embedding model/mode changed
     try:
-        room_count = vector_store.rooms_col.count()
-        if room_count == 0:
-            logger.info("Vector database is empty. Auto-indexing sample rooms and policies...")
-            init_sample_data()
-        else:
-            logger.info(f"Vector database already has {room_count} room records.")
+        vector_store.ensure_embeddings_current()
     except Exception as e:
-        logger.warning(f"Could not check or init sample data on startup: {e}")
+        logger.error(f"Could not verify/refresh embeddings on startup: {e}")
+    # Static legal/policy knowledge base
+    try:
+        if vector_store.policies_col.count() == 0:
+            logger.info("Indexing rental policies...")
+            seed_policies()
+    except Exception as e:
+        logger.warning(f"Could not index policies on startup: {e}")
+
+    sync_task = None
+    if core_room_sync.enabled:
+        logger.info(f"Room data source: core-service at {settings.CORE_SERVICE_URL}")
+        sync_task = asyncio.create_task(_room_sync_loop())
+    elif settings.SEED_SAMPLE_ROOMS:
+        try:
+            if vector_store.rooms_col.count() == 0:
+                logger.warning("CORE_SERVICE_URL not set: indexing DEMO sample rooms.")
+                seed_sample_rooms()
+        except Exception as e:
+            logger.warning(f"Could not index sample rooms on startup: {e}")
+    else:
+        logger.warning("CORE_SERVICE_URL not set and SEED_SAMPLE_ROOMS disabled: no room data will be indexed.")
     yield
+    if sync_task:
+        sync_task.cancel()
     logger.info("Roomix RAG Service is shutting down...")
 
 
@@ -41,7 +74,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    # Browsers reject credentials with a wildcard origin.
+    allow_credentials="*" not in settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -56,6 +90,7 @@ def health_check():
         "service": "roomix-rag-service",
         "vector_db_rooms_count": vector_store.rooms_col.count(),
         "vector_db_policies_count": vector_store.policies_col.count(),
+        "room_sync": {"enabled": core_room_sync.enabled, **core_room_sync.last_status},
     }
 
 

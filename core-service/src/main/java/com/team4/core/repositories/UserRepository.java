@@ -14,6 +14,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
 
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    Optional<User> findByIdAndRole(UUID id, Role role);
+
     boolean existsByEmail(String email);
 
     boolean existsByUsername(String username);

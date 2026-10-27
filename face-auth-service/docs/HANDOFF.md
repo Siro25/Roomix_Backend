@@ -29,7 +29,7 @@ quản lý users, mật khẩu, ADMIN/ACTIVE, phiên xác thực và JWT. Face P
 | Kết quả nghiệm thu và giới hạn | LOCAL_ACCEPTANCE.md |
 
 Core dùng package com.team4.core, AuthServiceImpl và JwtTokenProvider của nhóm.
-Flyway V1–V6 giữ nguyên; V7/V8 thêm phiên Face và outbox Telegram. Không còn
+Flyway V1–V11 của main giữ nguyên; V12/V13 thêm phiên Face và outbox Telegram. Không còn
 bootstrap Admin hay schema.sql của bộ Core thử nghiệm cũ.
 Frontend Roomix có tài liệu docs/ADMIN_AUTH_INTEGRATION.md; JWT và completionToken
 chỉ giữ trong bộ nhớ. JWT FACE không được dùng để đăng ký/thay khuôn mặt.

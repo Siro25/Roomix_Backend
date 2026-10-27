@@ -37,8 +37,8 @@ khi tạo challenge; Gateway không quyết định danh tính hoặc cấp JWT.
 Các API Admin, tài khoản và các route Face khác giữ yêu cầu Authorization.
 Gateway chỉ kiểm tra sự hiện diện của header; Core xác thực JWT và quyền.
 
-CORS dùng danh sách origin cụ thể, cho Content-Type/Authorization và không dùng
-cookie. Header CORS trùng từ Core được loại bỏ. Khi triển khai, cấu hình
+CORS dùng danh sách origin cụ thể, cho Content-Type/Authorization và hỗ trợ
+credentials cho refresh cookie của Core; Face vẫn dùng Bearer JWT. Header CORS trùng từ Core được loại bỏ. Khi triển khai, cấu hình
 GATEWAY_ALLOWED_ORIGINS thành địa chỉ frontend thật.
 
 ## Xác minh
@@ -46,3 +46,5 @@ GATEWAY_ALLOWED_ORIGINS thành địa chỉ frontend thật.
 Kiểm thử có máy chủ upstream giả để xác minh HTTP routing, JWT được chuyển
 tiếp, preflight, origin lạ bị chặn, và callback internal không được định tuyến.
 Đây chưa phải kiểm thử webcam thật hoặc gửi Telegram thật.
+
+Sau merge main: giữ public GET /api/invoices/vnpay/ipn và /api/invoices/vnpay/return; POST vẫn cần Authorization.

@@ -42,6 +42,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     String passwordHash;
 
+    @Column(name = "password_changed_at")
+    Instant passwordChangedAt;
+
     @Column(name = "full_name", nullable = false, length = 100)
     String fullName;
 
@@ -50,6 +53,9 @@ public class User {
 
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
+
+    @Column(length = 100)
+    String zalo;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -69,5 +75,17 @@ public class User {
 
     public void changeStatus(UserStatus newStatus) {
         status = newStatus;
+    }
+
+    public void changePassword(String newPasswordHash, Instant changedAt) {
+        passwordHash = newPasswordHash;
+        passwordChangedAt = changedAt;
+    }
+
+    public void updateProfile(String fullName, String phoneNumber, String avatarUrl, String zalo) {
+        this.fullName = fullName;
+        this.phoneNumber = phoneNumber;
+        this.avatarUrl = avatarUrl;
+        this.zalo = zalo;
     }
 }

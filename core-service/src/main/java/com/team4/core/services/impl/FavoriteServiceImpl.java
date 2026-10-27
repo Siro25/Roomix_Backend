@@ -21,7 +21,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -74,9 +77,16 @@ public class FavoriteServiceImpl implements FavoriteService {
                 ? room.getBasePrice()
                 : post.getRentalPrice();
 
+        User landlord = post.getLandlordId() != null
+                ? userRepository.findById(post.getLandlordId()).orElse(null)
+                : null;
+
         RoomSummaryResponse roomResponse = RoomSummaryResponse.builder()
                 .postId(post.getId())
                 .roomId(room.getId())
+                .landlordId(post.getLandlordId())
+                .landlordName(landlord != null ? landlord.getFullName() : null)
+                .contactPhone(landlord != null ? landlord.getPhoneNumber() : null)
                 .title(post.getTitle())
                 .rentalPrice(rentalPrice)
                 .area(room.getArea())
@@ -131,6 +141,15 @@ public class FavoriteServiceImpl implements FavoriteService {
             }
         }
 
+        List<UUID> landlordIds = favorites.stream()
+                .map(favorite -> favorite.getPost().getLandlordId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, User> landlords = landlordIds.isEmpty() ? Map.of() :
+                userRepository.findAllById(landlordIds).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity()));
+
         List<FavoriteResponse> responses = new ArrayList<>();
         for (Favorite favorite : favorites) {
             Post post = favorite.getPost();
@@ -139,9 +158,13 @@ public class FavoriteServiceImpl implements FavoriteService {
             BigDecimal rentalPrice = post.getRentalPrice() == null
                     ? room.getBasePrice()
                     : post.getRentalPrice();
+            User landlord = landlords.get(post.getLandlordId());
             RoomSummaryResponse roomResponse = RoomSummaryResponse.builder()
                     .postId(post.getId())
                     .roomId(room.getId())
+                    .landlordId(post.getLandlordId())
+                    .landlordName(landlord != null ? landlord.getFullName() : null)
+                    .contactPhone(landlord != null ? landlord.getPhoneNumber() : null)
                     .title(post.getTitle())
                     .rentalPrice(rentalPrice)
                     .area(room.getArea())

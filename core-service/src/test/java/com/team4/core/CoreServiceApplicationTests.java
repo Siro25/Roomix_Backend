@@ -95,6 +95,37 @@ class CoreServiceApplicationTests {
     @Test void configuredFrontendCanPreflight() throws Exception {
         http.perform(options("/api/auth/login").header("Origin","http://localhost:3000")
             .header("Access-Control-Request-Method","POST"))
-            .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin","http://localhost:3000"));
+            .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin","http://localhost:3000"))
+            .andExpect(header().string("Access-Control-Allow-Credentials","true"));
+    }
+
+    @Test void passwordLoginKeepsRefreshRotationAndLogout() throws Exception {
+        var loggedIn = http.perform(post("/api/auth/login").contentType("application/json")
+                .content("{\"username\":\"admin_test\",\"password\":\"Test-password-123!\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        String cookie = loggedIn.getHeader("Set-Cookie");
+        assertThat(cookie).contains("roomix_refresh=", "HttpOnly");
+        String first = cookie.split(";", 2)[0].split("=", 2)[1];
+        var refreshed = http.perform(post("/api/auth/refresh")
+                .cookie(new jakarta.servlet.http.Cookie("roomix_refresh", first)))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        String jwt = JsonPath.read(refreshed.getContentAsString(), "$.data.accessToken");
+        assertThat(tokens.decode(jwt).getClaimAsString("auth_method")).isEqualTo("PASSWORD");
+        String rotated = refreshed.getHeader("Set-Cookie").split(";", 2)[0].split("=", 2)[1];
+        assertThat(rotated).isNotEqualTo(first);
+        http.perform(post("/api/auth/logout").cookie(new jakarta.servlet.http.Cookie("roomix_refresh", rotated)))
+                .andExpect(status().isOk());
+        http.perform(post("/api/auth/refresh").cookie(new jakarta.servlet.http.Cookie("roomix_refresh", rotated)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test void mainPasswordRecoveryEndpointsRemainPublic() throws Exception {
+        // Unknown email sends no SMTP event; invalid token changes no password.
+        http.perform(post("/api/auth/forgot-password").contentType("application/json")
+                .content("{\"email\":\"missing@example.test\"}"))
+                .andExpect(status().isOk());
+        http.perform(post("/api/auth/reset-password").contentType("application/json")
+                .content("{\"token\":\"not-a-real-token\",\"newPassword\":\"New-test-password-123!\",\"confirmPassword\":\"New-test-password-123!\"}"))
+                .andExpect(status().isBadRequest());
     }
 }

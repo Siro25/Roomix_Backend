@@ -1,12 +1,12 @@
-.env.*
-
-# Local configuration and generated runtime files
+# Private environment files; only templates belong in Git.
 .env
+.env.*
 !.env.example
 **/node_modules/
 **/.venv/
 **/.venv-*/
 **/.tmp/
 **/target/
+**/target-*/
 **/.next/
 **/__pycache__/

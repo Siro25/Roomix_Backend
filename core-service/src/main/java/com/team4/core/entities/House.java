@@ -10,6 +10,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -38,21 +40,39 @@ public class House {
     UUID landlordId;
 
     @Column(nullable = false, length = 150)
+    @Setter
     String name;
 
     @Column(name = "address_street", nullable = false, length = 255)
+    @Setter
     String addressStreet;
 
     @Column(nullable = false, length = 100)
+    @Setter
     String ward;
 
     @Column(nullable = false, length = 100)
+    @Setter
     String district;
 
     @Column(nullable = false, length = 100)
+    @Setter
     String city;
 
+    @Column(precision = 10, scale = 7)
+    @Setter
+    BigDecimal latitude;
+
+    @Column(precision = 10, scale = 7)
+    @Setter
+    BigDecimal longitude;
+
+    @Column(columnDefinition = "text")
+    @Setter
+    String description;
+
     @Column(name = "total_floors", nullable = false)
+    @Setter
     int totalFloors;
 
     @Builder.Default

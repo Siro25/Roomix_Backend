@@ -34,7 +34,10 @@ public class AccountStatusFilter extends OncePerRequestFilter {
         }
 
         boolean active = userRepository.findById(UUID.fromString(jwtAuthentication.getToken().getSubject()))
-                .map(user -> user.getStatus() == UserStatus.ACTIVE)
+                .map(user -> user.getStatus() == UserStatus.ACTIVE
+                        && (user.getPasswordChangedAt() == null
+                                || !jwtAuthentication.getToken().getIssuedAt()
+                                        .isBefore(user.getPasswordChangedAt())))
                 .orElse(false);
         if (active) {
             filterChain.doFilter(request, response);

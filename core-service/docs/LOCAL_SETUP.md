@@ -19,7 +19,7 @@ Không gửi mật khẩu/token vào chat và không commit .env.
 ```
 
 CheckOnly chỉ kiểm tra cấu hình/kết nối và bảng, không tạo dữ liệu hay gửi tin.
-Database trống có thể báo SCHEMA_PENDING; Flyway V1–V8 chạy khi khởi động Core.
+Database trống có thể báo SCHEMA_PENDING; Flyway V1–V13 chạy khi khởi động Core.
 Database đã có bảng mà thiếu lịch sử Flyway phải đối chiếu với nhóm; không tự
 baseline hoặc chạy schema.sql cũ. Không còn bootstrap Admin tự động.
 

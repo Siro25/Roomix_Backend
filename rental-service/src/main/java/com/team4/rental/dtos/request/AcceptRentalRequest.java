@@ -1,35 +1,71 @@
 package com.team4.rental.dtos.request;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.Instant;
-import lombok.*;
+import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class AcceptRentalRequest {
-    @NotNull @FutureOrPresent
-    private LocalDate startDate;
-    @NotNull @Future
-    private LocalDate endDate;
-    @NotNull @DecimalMin("0.01") @Digits(integer = 13, fraction = 2)
-    private BigDecimal monthlyRent;
-    @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2)
-    private BigDecimal depositAmount;
-    @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2)
-    private BigDecimal electricityUnitPrice;
-    @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2)
-    private BigDecimal waterUnitPrice;
-    @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2)
-    private BigDecimal initialElectricity;
-    @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2)
-    private BigDecimal initialWater;
+    @NotNull
+    @FutureOrPresent
+    LocalDate startDate;
+
+    @NotNull
+    @Future
+    LocalDate endDate;
+
+    @NotNull
+    @DecimalMin("0.01")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal monthlyRent;
+
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal depositAmount;
+
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal electricityUnitPrice;
+
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal waterUnitPrice;
+
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal initialElectricity;
+
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 13, fraction = 2)
+    BigDecimal initialWater;
+
     @Size(max = 5000)
-    private String termsAndConditions;
+    String termsAndConditions;
+
+    @Size(max = 1000)
+    String contactNote;
 
     @Future
-    private Instant depositDeadline;
+    Instant depositDeadline;
 }

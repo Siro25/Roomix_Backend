@@ -143,7 +143,7 @@ class ComposeTest:
             VALUES ('{ADMIN_ID}','compose_admin','compose-admin@example.test','{PASSWORD_HASH}','Compose Admin','','ADMIN','ACTIVE',now(),now()),
                    ('{TENANT_ID}','compose_tenant','compose-tenant@example.test','{PASSWORD_HASH}','Compose Tenant','','TENANT','ACTIVE',now(),now());
         """)
-        assert self.sql("core-db", "core_db", "postgres", "SELECT count(*) FROM flyway_schema_history WHERE success;") == "8"
+        assert self.sql("core-db", "core_db", "postgres", "SELECT count(*) FROM flyway_schema_history WHERE success;") == "13"
 
     @staticmethod
     def request(client, method, path, expected=200, **kwargs):
@@ -198,7 +198,7 @@ class ComposeTest:
             assert profile["id"] == ADMIN_ID and profile["role"] == "ADMIN"
             self.request(client, "POST", "/api/auth/login", 401, json={"username": "compose_admin", "password": "wrong"})
             self.request(client, "POST", "/api/auth/face/sessions", 401, json={"purpose": "ENROLL"})
-            print("PASS: Flyway V1-V8, password login, profile and ENROLL authorization through Gateway", flush=True)
+            print("PASS: Flyway V1-V13, password login, profile and ENROLL authorization through Gateway", flush=True)
 
             # Production Face app, real AI, no test fixture mounted yet.
             ticket = self.create_ticket(client)

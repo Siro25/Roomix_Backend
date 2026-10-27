@@ -33,7 +33,7 @@ volume đều có prefix project thử và không phải external volume.
 
 ## Phạm vi xác minh
 
-1. Flyway V1–V8 trên Core database mới, đăng nhập mật khẩu, JWT và `/api/users/me`
+1. Flyway V1–V13 trên Core database mới, đăng nhập mật khẩu, JWT và `/api/users/me`
    đi qua Gateway; ENROLL thiếu JWT bị từ chối.
 2. Face app thật tải AI CPU, kiểm tra ảnh trống, callback lỗi về Core; đăng
    nhập không đạt không được cấp JWT. Callback internal không public qua Gateway.

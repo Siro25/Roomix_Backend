@@ -19,8 +19,8 @@ trực tiếp; API đăng nhập và /api/users/me giữ ApiResponse của nhóm
 
 ## Database
 
-Flyway là cơ chế tạo bảng duy nhất. Giữ nguyên V1–V6 của main, thêm V7 phiên
-Face và V8 hàng đợi Telegram. Không chạy schema.sql hoặc CORE_DB_INIT_MODE=always.
+Flyway là cơ chế tạo bảng duy nhất. Giữ nguyên V1–V11 của main, thêm V12 phiên
+Face và V13 hàng đợi Telegram. Không chạy schema.sql hoặc CORE_DB_INIT_MODE=always.
 Không tự baseline database đang có bảng nhưng thiếu lịch sử Flyway.
 CheckOnly chỉ đọc; database trống sẽ báo SCHEMA_PENDING. Khi thực sự khởi chạy
 Core, Flyway mới chạy migration. Không có chức năng bootstrap Admin cũ;
@@ -46,3 +46,26 @@ session hết hạn, callback lặp, secret sai và complete đồng thời.
 đã xác nhận webcam thật và Telegram hoạt động, cả với backend Docker. Chi tiết
 và giới hạn tại face-auth-service/docs/LOCAL_ACCEPTANCE.md từ gốc backend.
 Chưa đánh giá toàn bộ nghiệp vụ Rental/RAG hoặc benchmark chống giả mạo.
+
+## Gộp main ngày 27/10/2026
+
+Giữ chức năng reset/change password, refresh/logout và cookie của main; thêm
+thông báo Admin vào AuthSession login, không thay response của controller nhóm.
+Giữ các route VNPAY public GET của main cùng ba thao tác Face trước JWT.
+CORS chỉ cho origin cấu hình rõ ràng; cho credentials để Core dùng refresh cookie.
+Client Face/Admin hiện tại vẫn dùng JWT trong bộ nhớ, không tự bật refresh cookie.
+
+Main đã có V7–V11 nên hai migration Face chuyển thành V12 và V13, giữ nguyên
+nội dung SQL. Database mới hoặc database đang theo V1–V11 của main có thể dùng
+chuỗi V1–V13. Không đổi tên migration đã áp dụng của người phụ trách Core.
+
+**Database cũ của nhánh Face:** nếu flyway_schema_history có
+V7__create_admin_face_sessions.sql hoặc V8__create_auth_telegram_outbox.sql,
+không chạy Core mới trực tiếp. Preflight báo SCHEMA_FACE_LEGACY và dừng đọc-only.
+Cần sao lưu và đối chiếu lịch sử trước một bước nâng cấp riêng; không xóa dữ liệu,
+không chạy repair/baseline hoặc sửa checksum để bỏ qua lỗi. Lần gộp này chưa
+thay đổi lịch sử migration/database thật trên Windows hoặc Docker.
+
+Đã kiểm tra mã gộp trên cụm PostgreSQL test riêng: 59 test Core và 22 test Gateway
+đạt, không skip; 13 migration áp dụng thành công. SMTP/Telegram thật không được
+gọi trong kiểm thử. Không coi kết quả này là đã nâng cấp các database cũ của nhóm.

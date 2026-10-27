@@ -48,4 +48,13 @@ class AuthenticationFilterTests {
         verify(chain).filter(exchange);
         assertThat(exchange.getRequest().getHeaders().getFirst("Authorization")).isEqualTo("Bearer test-only");
     }
+
+    @Test void mainVnpayCallbacksRemainPublicForGetOnly() {
+        allowed("GET", "/api/invoices/vnpay/ipn");
+        allowed("GET", "/api/invoices/vnpay/return");
+    }
+    @Test void vnpayPostWithoutAuthorizationIsStillBlocked() {
+        blocked("POST", "/api/invoices/vnpay/ipn");
+        blocked("POST", "/api/invoices/vnpay/return");
+    }
 }

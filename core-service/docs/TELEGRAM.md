@@ -31,7 +31,7 @@ riêng; Core không tự đọc .env của Face. Cả hai giá trị trống s�
 không giữ thông báo chờ trong DB. Điền thiếu một giá trị sẽ dừng startup để
 báo cấu hình chưa đầy đủ. Không đưa bot token vào frontend hoặc Git.
 
-Database core_db dùng Flyway V8__create_auth_telegram_outbox.sql để tạo bảng.
+Database core_db dùng Flyway V13__create_auth_telegram_outbox.sql để tạo bảng.
 Không chạy telegram-outbox.sql hoặc CORE_DB_INIT_MODE của bộ khung cũ.
 
 CORE_TELEGRAM_WORKER_ENABLED=false dừng worker nhưng vẫn ghi hàng đợi nếu

@@ -46,6 +46,26 @@ public class CoreDatabaseCheck {
                 }
             }
             System.out.println("DATABASE_OK: Connected to configured Core database.");
+
+            // Old Face branches used V7/V8; main already owns those versions.
+            // Detect this before startup instead of modifying Flyway history here.
+            try (Statement query = db.createStatement();
+                    ResultSet result = query.executeQuery("SELECT to_regclass('flyway_schema_history') IS NOT NULL")) {
+                result.next();
+                if (result.getBoolean(1)) {
+                    try (Statement history = db.createStatement();
+                            ResultSet legacy = history.executeQuery("""
+                                    SELECT count(*) FROM flyway_schema_history
+                                    WHERE (version = '7' AND script = 'V7__create_admin_face_sessions.sql')
+                                       OR (version = '8' AND script = 'V8__create_auth_telegram_outbox.sql')
+                                    """)) {
+                        legacy.next();
+                        if (legacy.getLong(1) > 0)
+                            fail("SCHEMA_FACE_LEGACY: Old Face V7/V8 history requires a reviewed upgrade. See docs/MAIN_INTEGRATION.md. No data changed.");
+                    }
+                }
+            }
+
             if (!absent.isEmpty()) {
                 try (Statement query = db.createStatement();
                         ResultSet result = query.executeQuery("SELECT to_regclass('flyway_schema_history') IS NOT NULL, EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = current_schema())")) {

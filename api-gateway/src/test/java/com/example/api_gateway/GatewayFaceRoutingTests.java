@@ -82,6 +82,7 @@ class GatewayFaceRoutingTests {
                 .method("OPTIONS", HttpRequest.BodyPublishers.noBody()));
         assertThat(result.statusCode()).isEqualTo(200);
         assertThat(result.headers().firstValue("access-control-allow-origin")).contains("http://localhost:3000");
+        assertThat(result.headers().firstValue("access-control-allow-credentials")).contains("true");
     }
     @Test void duplicateCorsHeadersFromCoreAreDeduplicated() throws Exception {
         var result = send(request("/api/auth/face/sessions").header("Origin", "http://localhost:3000")

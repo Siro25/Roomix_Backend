@@ -1,10 +1,24 @@
 package com.team4.core.services;
 
+import com.team4.core.dtos.request.ForgotPasswordRequest;
+import com.team4.core.dtos.request.ChangePasswordRequest;
 import com.team4.core.dtos.request.LoginRequest;
 import com.team4.core.dtos.request.RegisterRequest;
-import com.team4.core.dtos.response.AuthResponse;
+import com.team4.core.dtos.request.ResetPasswordRequest;
+import java.util.UUID;
 
 public interface AuthService {
-    AuthResponse register(RegisterRequest request);
-    AuthResponse login(LoginRequest request);
+    AuthSession register(RegisterRequest request);
+
+    AuthSession login(LoginRequest request);
+
+    AuthSession refresh(String refreshToken);
+
+    void logout(String refreshToken);
+
+    void requestPasswordReset(ForgotPasswordRequest request);
+
+    void resetPassword(ResetPasswordRequest request);
+
+    void changePassword(UUID userId, ChangePasswordRequest request);
 }

@@ -61,7 +61,7 @@ lỗi lưu DB, retry cùng kết quả; chưa có transaction phân tán giữa 
 Thêm FACE_SERVICE_TOKEN vào environment Core, dùng giá trị đang có trong
 `.env` Face Python. Spring Boot không tự nạp .env. Không ghi bí mật vào Git.
 
-Database Core tạo bảng admin_face_sessions bằng Flyway V7; V8 tạo outbox
+Database Core tạo bảng admin_face_sessions bằng Flyway V12; V13 tạo outbox
 Telegram. Không chạy face-sessions.sql hoặc CORE_DB_INIT_MODE của bộ khung cũ.
 
 Core giữ metadata phiên/hash, không có dữ liệu sinh trắc. Có thể dọn phiên
