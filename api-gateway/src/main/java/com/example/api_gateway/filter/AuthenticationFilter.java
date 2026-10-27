@@ -18,6 +18,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     private static final String API_PREFIX = "/api/";
     private static final String PUBLIC_AUTH_PREFIX = "/api/auth/";
     private static final String PUBLIC_ROOM_PREFIX = "/api/rooms/";
+    private static final String PUBLIC_LANDLORD_PROFILE_PREFIX = "/api/users/landlords/";
     private static final String WEB_SOCKET_ENDPOINT = "/api/ws";
 
     @Override
@@ -34,7 +35,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                 || path.equals(WEB_SOCKET_ENDPOINT)
                 || path.startsWith(WEB_SOCKET_ENDPOINT + "/")
                 || ("GET".equalsIgnoreCase(method)
-                        && path.startsWith(PUBLIC_ROOM_PREFIX))) {
+                        && (path.startsWith(PUBLIC_ROOM_PREFIX)
+                                || path.startsWith(PUBLIC_LANDLORD_PROFILE_PREFIX)))) {
             return chain.filter(exchange);
         }
 

@@ -46,6 +46,7 @@ class VnpayServiceTest {
         config.setTmnCode("TESTCODE");
         config.setHashSecret("test-secret-for-signature");
         config.setReturnUrl("https://example.com/api/invoices/vnpay/return");
+        config.setConfirmOnReturn(false);
     }
 
     @Test
@@ -72,6 +73,30 @@ class VnpayServiceTest {
         assertEquals(java.util.HexFormat.of().formatHex(mac.doFinal(
                 unsignedQuery.getBytes(StandardCharsets.UTF_8))), fields.get("vnp_SecureHash"));
         verify(attempts).save(any(VnpayPaymentAttempt.class));
+    }
+
+    @Test
+    void replacesPendingPaymentWhenReturnUrlHasChanged() {
+        config.setReturnUrl("http://localhost:3000/payment/vnpay-return");
+        var invoice = Invoice.builder().id(invoiceId).invoiceCode("INV-123")
+                .tenancyId(UUID.randomUUID()).status(InvoiceStatus.CONFIRMED)
+                .totalAmount(new BigDecimal("150000.00")).paidAmount(BigDecimal.ZERO).build();
+        var oldAttempt = VnpayPaymentAttempt.builder().invoiceId(invoiceId).txnRef("old-ref")
+                .status(VnpayPaymentStatus.PENDING).paymentUrl("https://sandbox/old-return-url")
+                .expiresAt(Instant.parse("2026-10-25T04:00:00Z")).build();
+        when(invoices.lockById(invoiceId)).thenReturn(Optional.of(invoice));
+        when(tenancies.findVisible(invoice.getTenancyId(), tenantId)).thenReturn(Optional.of(
+                Tenancy.builder().tenantId(tenantId).build()));
+        when(attempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING))
+                .thenReturn(Optional.of(oldAttempt));
+
+        var result = service.createPayment(tenantId, invoiceId, "127.0.0.1");
+
+        assertNotEquals("old-ref", result.getTxnRef());
+        assertTrue(result.getPaymentUrl().contains("localhost%3A3000%2Fpayment%2Fvnpay-return"));
+        assertEquals(VnpayPaymentStatus.EXPIRED, oldAttempt.getStatus());
+        verify(attempts).saveAndFlush(oldAttempt);
+        verify(attempts).save(argThat(attempt -> !"old-ref".equals(attempt.getTxnRef())));
     }
 
     @Test
@@ -122,6 +147,26 @@ class VnpayServiceTest {
         assertEquals("PENDING", result.getPaymentStatus());
         verify(invoices, never()).save(any());
         verify(attempts, never()).save(any());
+    }
+
+    @Test
+    void localReturnConfirmsSignedSuccessfulPayment() throws Exception {
+        config.setConfirmOnReturn(true);
+        var invoice = Invoice.builder().id(invoiceId).status(InvoiceStatus.CONFIRMED)
+                .totalAmount(new BigDecimal("150000.00")).paidAmount(BigDecimal.ZERO).build();
+        var attempt = VnpayPaymentAttempt.builder().invoiceId(invoiceId).txnRef("test-ref")
+                .amount(invoice.getTotalAmount()).status(VnpayPaymentStatus.PENDING).build();
+        when(attempts.findByTxnRef("test-ref")).thenReturn(Optional.of(attempt));
+        when(attempts.lockByTxnRef("test-ref")).thenReturn(Optional.of(attempt));
+        when(invoices.lockById(invoiceId)).thenReturn(Optional.of(invoice));
+
+        var result = service.returnResult(signedIpn("15000000"));
+
+        assertEquals("SUCCESS", result.getPaymentStatus());
+        assertEquals(InvoiceStatus.PAID, invoice.getStatus());
+        assertEquals("VNPAY", invoice.getPaymentMethod());
+        verify(invoices).save(invoice);
+        verify(attempts).save(attempt);
     }
 
     @Test
