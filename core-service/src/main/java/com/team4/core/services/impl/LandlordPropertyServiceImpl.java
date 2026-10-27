@@ -4,7 +4,9 @@ import com.team4.core.dtos.request.FloorRequest;
 import com.team4.core.dtos.request.HouseRequest;
 import com.team4.core.dtos.response.FloorResponse;
 import com.team4.core.dtos.response.HouseResponse;
+import com.team4.core.dtos.response.LandlordPropertyResponse;
 import com.team4.core.entities.Floor;
+
 import com.team4.core.entities.House;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
@@ -57,7 +59,16 @@ public class LandlordPropertyServiceImpl implements LandlordPropertyService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<LandlordPropertyResponse> getOverview(UUID landlordId) {
+        return houseRepository.findDistinctByLandlordIdOrderByCreatedAtDesc(landlordId).stream()
+                .map(LandlordPropertyResponse::from)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public HouseResponse getHouse(UUID landlordId, UUID houseId) {
+
         House house = houseRepository.findByIdAndLandlordId(houseId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.HOUSE_NOT_FOUND));
         List<FloorResponse> floors = floorRepository.findByHouseIdAndHouseLandlordIdOrderByFloorNumberAsc(

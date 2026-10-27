@@ -46,6 +46,7 @@ public enum ErrorCode {
     FLOOR_DELETE_NOT_ALLOWED(1037, HttpStatus.CONFLICT, "Không thể xóa tầng vẫn còn phòng"),
     PASSWORD_RESET_TOKEN_INVALID(1038, HttpStatus.BAD_REQUEST, "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"),
     PASSWORD_CONFIRMATION_MISMATCH(1039, HttpStatus.BAD_REQUEST, "Xác nhận mật khẩu không khớp"),
+    INVALID_REFRESH_TOKEN(1040, HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn hoặc không hợp lệ"),
     UNCATEGORIZED_EXCEPTION(9999, HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống");
 
     private final int code;

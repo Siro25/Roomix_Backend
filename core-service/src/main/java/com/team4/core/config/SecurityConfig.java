@@ -76,7 +76,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/auth/register",
                                                                 "/api/auth/login", "/api/auth/forgot-password",
-                                                                "/api/auth/reset-password")
+                                                                "/api/auth/reset-password", "/api/auth/refresh",
+                                                                "/api/auth/logout")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/rooms/**")
                                                 .permitAll()
