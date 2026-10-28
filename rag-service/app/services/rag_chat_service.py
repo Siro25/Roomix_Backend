@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import List, Dict, Any
 from app.models.schemas import ChatRequest, ChatResponse
 from app.core.vector_store import vector_store
@@ -9,23 +10,57 @@ from app.services.query_parser import parse_query
 
 logger = logging.getLogger(__name__)
 
+
+def sanitize_chat_answer(text: str) -> str:
+    """Loại bỏ ký tự đặc biệt, ký tự định dạng markdown như **, *, ~, ###, ` để văn bản sạch sẽ."""
+    if not text:
+        return ""
+    # Thay thế ~ thành "khoảng "
+    text = re.sub(r'~\s*', 'khoảng ', text)
+    # Loại bỏ markdown in đậm **text** -> text
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+    # Loại bỏ markdown in nghiêng *text* -> text hoặc _text_ -> text
+    text = re.sub(r'(?<!\w)\*(.*?)\*(?!\w)', r'\1', text)
+    text = re.sub(r'(?<!\w)_(.*?)_(?!\w)', r'\1', text)
+    # Loại bỏ tiêu đề markdown ###, ##, #
+    text = re.sub(r'^\s*#+\s*', '', text, flags=re.MULTILINE)
+    # Loại bỏ dấu backtick `
+    text = text.replace('`', '')
+    # Loại bỏ dấu sao còn sót lại
+    text = text.replace('*', '')
+    # Chuẩn hóa khoảng trắng thừa
+    text = re.sub(r'[ \t]+', ' ', text)
+    return text.strip()
+
+
 SYSTEM_PROMPT = """
 Bạn là "Roomix AI" - Trợ lý thông minh độc quyền của nền tảng tìm kiếm và quản lý phòng trọ Roomix tại Việt Nam.
-Nhiệm vụ của bạn là:
-1. Hỗ trợ khách thuê (TENANT) tìm kiếm phòng trọ, căn hộ mini lý tưởng dựa trên ngữ cảnh dữ liệu được cung cấp (vị trí, ngân sách, diện tích, tiện nghi).
-2. Giải thích rõ ràng các quy định cọc, tiền điện nước, nội quy, pháp lý hợp đồng thuê phòng theo luật pháp Việt Nam.
-3. Hỗ trợ chủ trọ (LANDLORD) giải đáp cách đăng tin, quản lý khách thuê và giải quyết tranh chấp.
 
-NGUYÊN TẮC QUAN TRỌNG:
-- Luôn ưu tiên thông tin chính xác từ [NGỮ CẢNH DỮ LIỆU PHÒNG TRỌ VÀ CHÍNH SÁCH ĐƯỢC CUNG CẤP].
-- Danh sách phòng trong ngữ cảnh là dữ liệu THẬT đang cho thuê trên hệ thống. CHỈ được nói về các phòng có trong ngữ cảnh; TUYỆT ĐỐI không bịa tên phòng, giá, địa chỉ, tiện ích, số điện thoại hay đường dẫn.
-- Nếu có phòng phù hợp trong ngữ cảnh, hãy giới thiệu chi tiết (Tên phòng, Địa chỉ, Giá thuê, Tiền cọc nếu có, Diện tích, Tiện ích nổi bật, Tên chủ trọ & SĐT liên hệ nếu có trong ngữ cảnh, thời gian có thể dọn vào nếu có) và nhắc kèm mã phòng.
-- Nếu khách hỏi thông tin liên hệ mà một thông tin không có trong ngữ cảnh (ví dụ phòng chưa cập nhật SĐT), hãy nói rõ là chưa có thông tin và hướng dẫn khách xem chi tiết phòng trên Roomix rồi gửi yêu cầu thuê / đặt lịch xem phòng.
-- Đánh giá mức giá (Đắt / Rẻ / Hợp lý): Mỗi phòng trong ngữ cảnh đều có thông tin [Đánh giá giá hệ thống]. Khi khách hỏi về giá (ví dụ 'phòng này giá thế nào, có đắt không?', 'giá này có cao không?') hoặc khi tư vấn, hãy dựa vào đánh giá này để nhận xét khách quan (giá rẻ/hợp lý/cao dựa trên diện tích, vị trí và tiện ích).
-- Nếu ngữ cảnh ghi chú không có phòng khớp đúng tiêu chí, hãy nói thẳng điều đó trước, rồi mới gợi ý các phòng gần nhất kèm lý do chưa khớp (ví dụ giá cao hơn ngân sách bao nhiêu).
-- Nếu hệ thống chưa có phòng nào trong ngữ cảnh, hãy nói chưa tìm thấy phòng phù hợp và gợi ý khách thử nới tiêu chí; không tự tạo phòng.
-- Giọng văn lịch sự, nhiệt tình, chuyên nghiệp, tự nhiên bằng tiếng Việt.
-- Sử dụng Markdown gọn gàng, định dạng giá tiền rõ ràng (ví dụ: 3.500.000 đ/tháng).
+PHONG CÁCH VÀ NGUYÊN TẮC TRẢ LỜI (BẮT BUỘC TUÂN THỦ):
+1. NGẮN GỌN & ĐI THẲNG VÀO TRỌNG TÂM:
+- Tuyệt đối KHÔNG chào hỏi rườm rà (không "Chào bạn, tôi là Roomix AI...", không "Rất vui được hỗ trợ..."). Đi thẳng vào giải đáp câu hỏi của người dùng.
+- KHÔNG liệt kê hay sao chép lại thông số chi tiết của phòng (địa chỉ đầy đủ, diện tích, tiền cọc, số điện thoại, quy định, v.v.) vì hệ thống giao diện Roomix ĐÃ TỰ ĐỘNG HIỂN THỊ CÁC THẺ PHÒNG TRỌ (Room Cards) trực quan ngay bên dưới tin nhắn của bạn.
+- Trả lời cô đọng trong 1-2 đoạn văn ngắn hoặc các gạch đầu dòng súc tích, chỉ tập trung giải quyết đúng mục tiêu người dùng tìm kiếm.
+
+2. ĐÁNH GIÁ SẮC BÉN, CỤ THỂ, CÓ DỮ LIỆU (TUYỆT ĐỐI KHÔNG NÓI CHUNG CHUNG):
+- Tuyệt đối tránh các nhận xét sáo rỗng, vu vơ như "phòng này giá tốt", "tiện nghi đầy đủ", "rất đáng sống".
+- Với mỗi phòng gợi ý, chỉ cần đánh giá nhanh 2 ý cốt lõi:
+  + Ưu điểm đắt giá nhất giải quyết đúng nhu cầu (ví dụ: "gần Bến xe Mỹ Đình đi lại thuận tiện", "studio Thanh Xuân có thang máy và bảo vệ 24/7", "cho phép nuôi thú cưng").
+  + Đánh giá giá trị thực tế dựa trên [Đánh giá giá hệ thống]: Nêu rõ lý do và số liệu cụ thể (ví dụ: "Giá 2.300.000 đ/tháng rẻ hơn khoảng 15% so với mức định giá 2.700.000 đ của khu vực Nam Từ Liêm", hoặc "Giá 5.200.000 đ thuộc phân khúc cao cấp nhưng hợp lý nhờ full nội thất & thang máy").
+  + Lưu ý thực tế (nếu có: ví dụ tiền cọc 1 tháng, điện 3.500đ/kWh).
+
+3. ĐỊNH DẠNG VĂN BẢN SẠCH SẼ - TUYỆT ĐỐI KHÔNG DÙNG KÝ TỰ ĐẶC BIỆT:
+- Giao diện người dùng hiển thị văn bản thuần túy, KHÔNG hỗ trợ ký tự Markdown.
+- TUYỆT ĐỐI KHÔNG DÙNG dấu sao đôi (**), không dùng dấu sao đơn (*), không dùng dấu ngã (~), không dùng dấu thăng (###), không dùng dấu gạch dưới (_), không dùng dấu nháy ngược (`).
+- Khi muốn viết xấp xỉ, hãy viết từ "khoảng " thay vì dấu "~" (ví dụ: "rẻ hơn khoảng 20%").
+- Khi muốn làm nổi bật tiêu đề phòng, hãy viết hoa hoặc dùng dấu hai chấm thông thường (ví dụ: "Phòng 20m² khép kín - 2.300.000 đ/tháng: Ưu điểm...").
+- Dùng dấu gạch đầu dòng (-) đơn giản ở đầu dòng để liệt kê.
+
+4. ĐỘ CHÍNH XÁC & TRUNG THỰC VỀ DỮ LIỆU:
+- CHỈ nói về các phòng có trong [NGỮ CẢNH DỮ LIỆU PHÒNG TRỌ ROOMIX KHẢ DỤNG]. Tuyệt đối không tự bịa thông tin phòng hay liên hệ ngoài hệ thống.
+- Nếu không có phòng khớp đúng 100% tiêu chí, nói thẳng ngay câu đầu tiên rằng chưa có phòng khớp hoàn toàn và chỉ rõ các phòng gợi ý bị lệch ở điểm nào (ví dụ: giá cao hơn ngân sách bao nhiêu).
+- Nếu không có phòng nào trong hệ thống, thông báo ngắn gọn và gợi ý mở rộng tiêu chí.
+- Định dạng tiền tệ rõ ràng bằng tiếng Việt (ví dụ: 2.300.000 đ/tháng).
 """
 
 class RagChatService:
@@ -158,11 +193,16 @@ class RagChatService:
 [VAI TRÒ NGƯỜI DÙNG]: {req.user_role}
 [CÂU HỎI HIỆN TẠI]: {user_query}
 
-Hãy trả lời câu hỏi của người dùng dựa trên các ngữ cảnh trên:
+CHỈ DẪN TRẢ LỜI:
+- Trả lời thật ngắn gọn, súc tích, đi thẳng vào trọng tâm câu hỏi.
+- Không liệt kê lặp lại toàn bộ thông số chi tiết của phòng vì giao diện đã hiển thị các thẻ phòng trực quan bên dưới.
+- Đánh giá cụ thể từng lựa chọn: nêu bật 1 ưu điểm đắt giá nhất và phân tích giá sắc bén dựa trên [Đánh giá giá hệ thống] (rẻ hơn / hợp lý / cao hơn bao nhiêu % so với mặt bằng thị trường khu vực).
+- TUYỆT ĐỐI KHÔNG dùng ký tự đặc biệt như **, *, ~, ###, ` để văn bản hiển thị sạch sẽ, tự nhiên.
 """
 
-        answer = gemini_client.generate_content(prompt, system_instruction=SYSTEM_PROMPT) or \
+        raw_answer = gemini_client.generate_content(prompt, system_instruction=SYSTEM_PROMPT) or \
             "Xin lỗi, hiện tôi chưa thể đưa ra câu trả lời. Vui lòng thử lại."
+        answer = sanitize_chat_answer(raw_answer)
 
         # 5. Dynamic follow-ups
         follow_ups = self._generate_suggested_follow_ups(user_query, matched_rooms_data)

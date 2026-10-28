@@ -2,6 +2,7 @@ import logging
 import hashlib
 import math
 import re
+import time
 from typing import List, Optional
 from app.config import settings
 
@@ -104,12 +105,27 @@ class GeminiClient:
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction
                 ) if system_instruction else None
-                response = self._client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=config
-                )
-                return response.text or ""
+                models = [self.model_name] + [
+                    m for m in settings.GEMINI_FALLBACK_MODELS if m != self.model_name
+                ]
+                last_error: Optional[Exception] = None
+                for model_name in models:
+                    for attempt in range(2):
+                        try:
+                            response = self._client.models.generate_content(
+                                model=model_name,
+                                contents=prompt,
+                                config=config
+                            )
+                            return response.text or ""
+                        except Exception as e:
+                            last_error = e
+                            logger.warning(
+                                f"Gemini model {model_name} failed (attempt {attempt + 1}): {e}"
+                            )
+                            if attempt == 0:
+                                time.sleep(1.5)
+                raise last_error  # type: ignore[misc]
             if self._legacy_genai is not None:
                 model = self._legacy_genai.GenerativeModel(
                     self.model_name,

@@ -4,7 +4,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+    # Tried in order when the primary model is overloaded (503) or unavailable.
+    GEMINI_FALLBACK_MODELS: List[str] = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"]
     # text-embedding-004 has been retired; gemini-embedding-001 supports MRL so
     # we keep 768 dimensions to stay compact.
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
