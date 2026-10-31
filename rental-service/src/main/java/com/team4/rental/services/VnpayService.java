@@ -41,6 +41,7 @@ public class VnpayService {
     private final InvoiceRepository invoices;
     private final TenancyRepository tenancies;
     private final VnpayPaymentAttemptRepository attempts;
+    private final AuditService auditService;
     private final Clock clock;
 
     @Transactional
@@ -100,9 +101,23 @@ public class VnpayService {
 
         String query = encode(parameters);
         String paymentUrl = config.getPaymentUrl() + "?" + query + "&vnp_SecureHash=" + sign(query);
-        attempts.save(VnpayPaymentAttempt.builder().id(UUID.randomUUID()).invoiceId(invoiceId)
+        VnpayPaymentAttempt attempt = VnpayPaymentAttempt.builder()
+                .id(UUID.randomUUID()).invoiceId(invoiceId)
                 .txnRef(txnRef).amount(amount).status(VnpayPaymentStatus.PENDING)
-                .paymentUrl(paymentUrl).createdAt(now).expiresAt(expiresAt).build());
+                .paymentUrl(paymentUrl).createdAt(now).expiresAt(expiresAt).build();
+        attempts.save(attempt);
+        auditService.record(
+                tenantId,
+                "CREATE_VNPAY_PAYMENT",
+                "VNPAY_PAYMENT",
+                attempt.getId(),
+                Map.of(),
+                Map.of(
+                        "invoiceId", invoiceId.toString(),
+                        "txnRef", txnRef,
+                        "status", VnpayPaymentStatus.PENDING.name(),
+                        "amount", amount.toPlainString(),
+                        "expiresAt", expiresAt.toString()));
         return VnpayPaymentResponse.builder().txnRef(txnRef).paymentUrl(paymentUrl)
                 .expiresAt(expiresAt).build();
     }
@@ -161,6 +176,17 @@ public class VnpayService {
             invoice.setPaymentDate(clock.instant());
             invoices.save(invoice);
         }
+        auditService.record(
+                null,
+                "COMPLETE_VNPAY_PAYMENT",
+                "VNPAY_PAYMENT",
+                attempt.getId(),
+                Map.of("status", VnpayPaymentStatus.PENDING.name()),
+                Map.of(
+                        "status", attempt.getStatus().name(),
+                        "invoiceId", invoice.getId().toString(),
+                        "responseCode", attempt.getResponseCode(),
+                        "invoiceStatus", invoice.getStatus().name()));
         return Map.of("RspCode", "00", "Message", "Confirm Success");
     }
 
@@ -216,6 +242,17 @@ public class VnpayService {
         invoice.setPaymentMethod("VNPAY_LOCAL_SIMULATION");
         invoice.setPaymentDate(clock.instant());
         invoices.save(invoice);
+        auditService.record(
+                tenantId,
+                "SIMULATE_VNPAY_PAYMENT",
+                "VNPAY_PAYMENT",
+                attempt.getId(),
+                Map.of("status", VnpayPaymentStatus.PENDING.name()),
+                Map.of(
+                        "status", VnpayPaymentStatus.SUCCESS.name(),
+                        "invoiceId", invoiceId.toString(),
+                        "invoiceStatus", InvoiceStatus.PAID.name(),
+                        "paymentMethod", invoice.getPaymentMethod()));
         return VnpayReturnResponse.builder().invoiceId(invoiceId).txnRef(attempt.getTxnRef())
                 .responseCode("00").paymentStatus(VnpayPaymentStatus.SUCCESS.name())
                 .message("Đã mô phỏng thanh toán VNPAY trên môi trường local").build();
