@@ -47,6 +47,9 @@ public class Notification {
     @Column(name = "reference_id")
     UUID referenceId;
 
+    @Column(name = "target_url", length = 500)
+    String targetUrl;
+
     @Builder.Default
     @Column(name = "is_read", nullable = false)
     boolean read = false;

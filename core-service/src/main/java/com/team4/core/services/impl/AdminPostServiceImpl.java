@@ -69,7 +69,8 @@ public class AdminPostServiceImpl implements AdminPostService {
                 NotificationType.POST_APPROVAL,
                 "POST_APPROVED",
                 "Bài đăng đã được duyệt",
-                "Bài đăng \"" + post.getTitle() + "\" đã được duyệt công khai.");
+                "Bài đăng \"" + post.getTitle() + "\" đã được duyệt công khai.",
+                "/landlord/listings/" + post.getRoomId());
         return AdminPostResponse.from(post);
     }
 
@@ -98,7 +99,8 @@ public class AdminPostServiceImpl implements AdminPostService {
                 NotificationType.POST_APPROVAL,
                 "POST_REJECTED",
                 "Bài đăng chưa được duyệt",
-                "Bài đăng \"" + post.getTitle() + "\" bị từ chối. Lý do: " + reason);
+                "Bài đăng \"" + post.getTitle() + "\" bị từ chối. Lý do: " + reason,
+                "/landlord/listings/" + post.getRoomId());
         return AdminPostResponse.from(post);
     }
 }

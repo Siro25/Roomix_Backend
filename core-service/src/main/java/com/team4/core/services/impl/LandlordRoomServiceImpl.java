@@ -2,11 +2,14 @@ package com.team4.core.services.impl;
 
 import com.team4.core.dtos.request.LandlordRoomRequest;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.entities.Floor;
 import com.team4.core.entities.Post;
 import com.team4.core.entities.Room;
 import com.team4.core.entities.RoomImage;
 import com.team4.core.enums.PostStatus;
+import com.team4.core.enums.NotificationType;
+import com.team4.core.enums.Role;
 import com.team4.core.enums.RoomStatus;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
@@ -14,6 +17,8 @@ import com.team4.core.repositories.FloorRepository;
 import com.team4.core.repositories.PostRepository;
 import com.team4.core.repositories.RoomImageRepository;
 import com.team4.core.repositories.RoomRepository;
+import com.team4.core.repositories.UserRepository;
+import com.team4.core.services.AccountNotificationService;
 import com.team4.core.services.ImageStorageService;
 import com.team4.core.services.LandlordRoomService;
 import java.math.BigDecimal;
@@ -33,6 +38,58 @@ public class LandlordRoomServiceImpl implements LandlordRoomService {
     private final RoomImageRepository roomImageRepository;
     private final PostRepository postRepository;
     private final ImageStorageService imageStorageService;
+    private final UserRepository userRepository;
+    private final AccountNotificationService notificationService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public RoomDetailResponse getDetail(UUID landlordId, UUID roomId) {
+        Room room = roomRepository.findByIdAndFloorHouseLandlordId(roomId, landlordId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+        Post post = postRepository
+                .findFirstByRoomIdAndLandlordIdOrderByCreatedAtDesc(roomId, landlordId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_POST_NOT_FOUND));
+        Floor floor = room.getFloor();
+        var house = floor.getHouse();
+        List<String> imageUrls = roomImageRepository.findByRoomIdOrderByDisplayOrderAsc(roomId)
+                .stream()
+                .map(RoomImage::getImageUrl)
+                .toList();
+        BigDecimal rentalPrice = post.getRentalPrice() == null
+                ? room.getBasePrice()
+                : post.getRentalPrice();
+
+        return RoomDetailResponse.builder()
+                .postId(post.getId())
+                .roomId(room.getId())
+                .houseId(house.getId())
+                .floorId(floor.getId())
+                .houseName(house.getName())
+                .floorName(floor.getName())
+                .floorNumber(floor.getFloorNumber())
+                .roomNumber(room.getRoomNumber())
+                .title(post.getTitle())
+                .description(post.getDescription())
+                .rentalPrice(rentalPrice)
+                .depositAmount(post.getDepositAmount())
+                .area(room.getArea())
+                .maxTenants(room.getMaxTenants())
+                .availableFrom(post.getAvailableFrom())
+                .addressStreet(house.getAddressStreet())
+                .ward(house.getWard())
+                .district(house.getDistrict())
+                .city(house.getCity())
+                .hasPrivateBathroom(room.isHasPrivateBathroom())
+                .hasAirConditioner(room.isHasAirConditioner())
+                .hasWaterHeater(room.isHasWaterHeater())
+                .hasBalcony(room.isHasBalcony())
+                .amenitiesDescription(room.getAmenitiesDescription())
+                .rented(room.isRented())
+                .available(!room.isRented())
+                .imageUrls(imageUrls)
+                .createdAt(post.getCreatedAt())
+                .build();
+    }
 
     @Override
     @Transactional
@@ -197,6 +254,14 @@ public class LandlordRoomServiceImpl implements LandlordRoomService {
         post.setStatus(PostStatus.PENDING);
         post.setRejectReason(null);
         postRepository.save(post);
+        userRepository.findAllByRole(Role.ADMIN).forEach(admin -> notificationService.send(
+                admin.getId(),
+                post.getId(),
+                NotificationType.POST_APPROVAL,
+                "POST_SUBMITTED",
+                "Có bài đăng mới chờ duyệt",
+                "Bài đăng \"" + post.getTitle() + "\" vừa được chủ trọ gửi duyệt.",
+                "/admin/moderation"));
 
         List<String> imageUrls = roomImageRepository.findByRoomIdOrderByDisplayOrderAsc(roomId)
                 .stream()

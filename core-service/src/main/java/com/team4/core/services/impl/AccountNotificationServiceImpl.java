@@ -28,7 +28,8 @@ public class AccountNotificationServiceImpl implements AccountNotificationServic
             NotificationType type,
             String event,
             String title,
-            String content) {
+            String content,
+            String targetUrl) {
         Instant createdAt = Instant.now();
         Notification notification = notificationRepository.save(Notification.builder()
                 .userId(userId)
@@ -36,6 +37,7 @@ public class AccountNotificationServiceImpl implements AccountNotificationServic
                 .content(content)
                 .type(type)
                 .referenceId(referenceId)
+                .targetUrl(targetUrl)
                 .createdAt(createdAt)
                 .build());
 
@@ -47,6 +49,7 @@ public class AccountNotificationServiceImpl implements AccountNotificationServic
                 .content(content)
                 .type(type)
                 .referenceId(referenceId)
+                .targetUrl(targetUrl)
                 .read(false)
                 .createdAt(createdAt)
                 .build();
