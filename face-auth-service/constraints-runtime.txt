@@ -1,0 +1,7 @@
+# Bộ thư viện AI tương thích với facenet-pytorch 2.6 trên Python 3.11.
+torch==2.2.2
+torchvision==0.17.2
+numpy==1.26.4
+pillow==10.2.0
+opencv-python==4.11.0.86
+ultralytics==8.4.184

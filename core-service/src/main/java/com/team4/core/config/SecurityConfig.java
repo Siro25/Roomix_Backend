@@ -52,13 +52,26 @@ public class SecurityConfig {
             HttpSecurity http,
             JwtTokenProvider tokens,
             AccountStatusFilter accountStatusFilter,
-            GlobalExceptionHandler exceptionHandler) throws Exception {
+            GlobalExceptionHandler exceptionHandler,
+            com.team4.core.face.FaceServiceToken faceServiceToken,
+            @org.springframework.beans.factory.annotation.Value("${core.auth.allowed-origins:}") String allowedOrigins) throws Exception {
         var authorities = new JwtGrantedAuthoritiesConverter();
         authorities.setAuthoritiesClaimName("role");
         authorities.setAuthorityPrefix("ROLE_");
 
         var converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authorities);
+
+        // Explicit frontend origins also support main's HttpOnly refresh cookie.
+        if (!allowedOrigins.isBlank()) {
+            var cors = new org.springframework.web.cors.CorsConfiguration();
+            cors.setAllowedOrigins(java.util.Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim).filter(origin -> !origin.isEmpty()).toList());
+            cors.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            cors.setAllowedHeaders(java.util.List.of("Content-Type", "Authorization"));
+            cors.setAllowCredentials(true);
+            http.cors(configuration -> configuration.configurationSource(request -> cors));
+        }
 
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -81,7 +94,11 @@ public class SecurityConfig {
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
-                                "/api/auth/logout")
+                                "/api/auth/logout",
+                                "/api/auth/face/sessions",
+                                "/api/auth/face/complete",
+                                "/internal/face/sessions/validate",
+                                "/internal/face/results")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rooms/**")
                         .permitAll()
@@ -105,6 +122,8 @@ public class SecurityConfig {
                         .jwt(jwt -> jwt
                                 .decoder(tokens)
                                 .jwtAuthenticationConverter(converter)))
+                .addFilterBefore(new com.team4.core.face.FaceServiceTokenFilter(faceServiceToken),
+                        BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(accountStatusFilter, BearerTokenAuthenticationFilter.class)
                 .build();
     }

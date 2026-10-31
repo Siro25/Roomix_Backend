@@ -9,11 +9,13 @@ import com.team4.core.entities.House;
 import com.team4.core.entities.Post;
 import com.team4.core.entities.Room;
 import com.team4.core.entities.RoomImage;
+import com.team4.core.entities.User;
 import com.team4.core.enums.PostStatus;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
 import com.team4.core.repositories.PostRepository;
 import com.team4.core.repositories.RoomImageRepository;
+import com.team4.core.repositories.UserRepository;
 import com.team4.core.services.RoomQueryService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
@@ -23,7 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomQueryServiceImpl implements RoomQueryService {
     private final PostRepository postRepository;
     private final RoomImageRepository roomImageRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -121,15 +127,28 @@ public class RoomQueryServiceImpl implements RoomQueryService {
             }
         }
 
+        List<UUID> landlordIds = posts.getContent().stream()
+                .map(Post::getLandlordId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, User> landlords = landlordIds.isEmpty() ? Map.of() :
+                userRepository.findAllById(landlordIds).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity()));
+
         return PageResponse.from(posts, post -> {
             Room room = post.getRoom();
             House house = room.getFloor().getHouse();
             BigDecimal rentalPrice = post.getRentalPrice() == null
                     ? room.getBasePrice()
                     : post.getRentalPrice();
+            User landlord = landlords.get(post.getLandlordId());
             return RoomSummaryResponse.builder()
                     .postId(post.getId())
                     .roomId(room.getId())
+                    .landlordId(post.getLandlordId())
+                    .landlordName(landlord != null ? landlord.getFullName() : null)
+                    .contactPhone(landlord != null ? landlord.getPhoneNumber() : null)
                     .title(post.getTitle())
                     .rentalPrice(rentalPrice)
                     .area(room.getArea())
@@ -169,12 +188,18 @@ public class RoomQueryServiceImpl implements RoomQueryService {
         BigDecimal rentalPrice = post.getRentalPrice() == null
                 ? room.getBasePrice()
                 : post.getRentalPrice();
+        User landlord = post.getLandlordId() != null
+                ? userRepository.findById(post.getLandlordId()).orElse(null)
+                : null;
 
         return RoomDetailResponse.builder()
                 .postId(post.getId())
                 .roomId(room.getId())
                 .houseId(house.getId())
                 .floorId(floor.getId())
+                .landlordId(post.getLandlordId())
+                .landlordName(landlord != null ? landlord.getFullName() : null)
+                .contactPhone(landlord != null ? landlord.getPhoneNumber() : null)
                 .houseName(house.getName())
                 .floorName(floor.getName())
                 .floorNumber(floor.getFloorNumber())

@@ -26,6 +26,9 @@ import com.team4.core.security.JwtTokenProvider;
 import com.team4.core.services.AccountNotificationService;
 import com.team4.core.services.AuthService;
 import com.team4.core.services.AuthSession;
+import com.team4.core.notifications.AuthTelegramAlerts;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -52,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthTelegramAlerts authAlerts;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetProperties passwordResetProperties;
@@ -96,10 +100,23 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public AuthSession login(LoginRequest request) {
-        var authentication = authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated(
-                        request.getUsername(), request.getPassword()));
-        return response(((CustomUserDetails) authentication.getPrincipal()).getUser());
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(
+                            request.getUsername(), request.getPassword()));
+        } catch (AuthenticationException exception) {
+            // A failed username is unverified. Do not attribute a known Tenant/Landlord to Admin.
+            String username = request.getUsername().strip().toLowerCase(Locale.ROOT);
+            boolean adminOrUnknown = userRepository.findByUsername(username)
+                    .map(account -> account.getRole() == Role.ADMIN).orElse(true);
+            if (adminOrUnknown) authAlerts.passwordFailed(username);
+            throw exception;
+        }
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        AuthSession session = response(user);
+        if (user.getRole() == Role.ADMIN) authAlerts.passwordSucceeded(user.getId(), user.getUsername());
+        return session;
     }
 
     @Override

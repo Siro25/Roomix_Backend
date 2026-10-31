@@ -1,0 +1,14 @@
+-c constraints-runtime.txt
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+psycopg[binary]>=3.2,<4
+httpx==0.28.*
+websockets==15.*
+python-multipart==0.0.*
+facenet-pytorch==2.6.0
+ultralytics>=8.0,<9
+torch
+torchvision
+opencv-python
+numpy
+pillow

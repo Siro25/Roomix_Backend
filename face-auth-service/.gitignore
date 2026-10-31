@@ -31,3 +31,30 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Python Face Auth ###
+.venv/
+.venv-runtime/
+__pycache__/
+*.py[cod]
+.env
+data/
+.tmp/
+*.db
+*.db-journal
+*.pkl
+*.pt
+*.task
+
+# Private biometric exports, runtime and archives
+models/
+*.npy
+*.npz
+*.pickle
+*.pth
+*.sqlite*
+*.dump
+*.backup
+*.log
+.pytest_cache/
+.ruff_cache/

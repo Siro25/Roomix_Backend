@@ -59,18 +59,23 @@ public class JwtTokenProvider implements JwtDecoder {
     }
 
     public String generateToken(User user) {
-        Instant now = Instant.now();
+        return generatePasswordToken(user.getId(), user.getRole().name(), Instant.now());
+    }
+
+    public String generatePasswordToken(UUID userId, String role, Instant issued) {
+        return sign(userId, role, "PASSWORD", issued, issued.plusSeconds(expirationSeconds), UUID.randomUUID().toString());
+    }
+
+    public String generateFaceToken(UUID adminId, Instant issued, Instant expiry, String sessionId) {
+        return sign(adminId, "ADMIN", "FACE", issued, expiry, "face:" + sessionId);
+    }
+
+    private String sign(UUID userId, String role, String method, Instant issued, Instant expiry, String tokenId) {
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(issuer)
-                .subject(user.getId().toString())
-                .audience(List.of(AUDIENCE))
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(expirationSeconds))
-                .id(UUID.randomUUID().toString())
-                .claim("role", user.getRole().name())
-                .build();
-        return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(ALGORITHM).build(), claims))
-                .getTokenValue();
+                .issuer(issuer).subject(userId.toString()).audience(List.of(AUDIENCE))
+                .issuedAt(issued).expiresAt(expiry).id(tokenId)
+                .claim("role", role).claim("auth_method", method).build();
+        return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(ALGORITHM).build(), claims)).getTokenValue();
     }
 
     @Override

@@ -1,9 +1,11 @@
 import json
 import os
 import logging
-from fastapi import APIRouter, HTTPException
+from typing import List
+from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import IngestRoomsRequest, IngestResponse, RoomItem
 from app.core.vector_store import vector_store
+from app.services.core_room_sync import core_room_sync, CoreSyncError
 
 router = APIRouter(prefix="/ingest", tags=["Data Ingestion & Indexing"])
 logger = logging.getLogger(__name__)
@@ -22,32 +24,53 @@ def ingest_rooms(request: IngestRoomsRequest):
         )
     except Exception as e:
         logger.error(f"Error ingesting rooms: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Lỗi nạp dữ liệu phòng: {str(e)}")
+        raise HTTPException(status_code=500, detail="Lỗi nạp dữ liệu phòng.")
 
 
-@router.post("/init-sample-data", response_model=IngestResponse, summary="Khởi tạo dữ liệu mẫu ban đầu (phòng trọ & chính sách)")
-def init_sample_data():
+@router.delete("/rooms", summary="Xóa phòng trọ khỏi Vector Database")
+def delete_rooms(ids: List[str] = Query(..., description="Danh sách id phòng cần xóa")):
     """
-    Nạp dữ liệu mẫu ban đầu từ thư mục data để kiểm thử hệ thống ngay lập tức.
+    Gỡ các phòng đã bị xóa/ẩn ở hệ thống chính khỏi chỉ mục tìm kiếm.
     """
     try:
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        rooms_file = os.path.join(base_dir, "data", "sample_rooms.json")
-        rules_file = os.path.join(base_dir, "data", "rental_rules.json")
+        count = vector_store.delete_rooms(ids)
+        return {"success": True, "deleted_count": count}
+    except Exception as e:
+        logger.error(f"Error deleting rooms: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Lỗi xóa dữ liệu phòng.")
 
-        room_count = 0
-        if os.path.exists(rooms_file):
-            with open(rooms_file, "r", encoding="utf-8") as f:
-                raw_rooms = json.load(f)
-                rooms = [RoomItem(**r) for r in raw_rooms]
-                room_count = vector_store.add_rooms(rooms)
 
-        rule_count = 0
-        if os.path.exists(rules_file):
-            with open(rules_file, "r", encoding="utf-8") as f:
-                rules = json.load(f)
-                rule_count = vector_store.add_policy_documents(rules)
+def _data_path(name: str) -> str:
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", name)
 
+
+def seed_policies() -> int:
+    """Load the rental rules/policies knowledge base (static legal content)."""
+    rules_file = _data_path("rental_rules.json")
+    if not os.path.exists(rules_file):
+        return 0
+    with open(rules_file, "r", encoding="utf-8") as f:
+        return vector_store.add_policy_documents(json.load(f))
+
+
+def seed_sample_rooms() -> int:
+    """Load DEMO rooms. Never use alongside real data from core-service."""
+    rooms_file = _data_path("sample_rooms.json")
+    if not os.path.exists(rooms_file):
+        return 0
+    with open(rooms_file, "r", encoding="utf-8") as f:
+        return vector_store.add_rooms([RoomItem(**r) for r in json.load(f)])
+
+
+@router.post("/init-sample-data", response_model=IngestResponse, summary="Khởi tạo dữ liệu mẫu ban đầu (chính sách & phòng demo)")
+def init_sample_data():
+    """
+    Nạp chính sách mẫu. Phòng demo chỉ được nạp khi KHÔNG cấu hình CORE_SERVICE_URL
+    (khi có core-service, dữ liệu phòng luôn lấy từ hệ thống thật).
+    """
+    try:
+        rule_count = seed_policies()
+        room_count = 0 if core_room_sync.enabled else seed_sample_rooms()
         return IngestResponse(
             success=True,
             indexed_count=room_count + rule_count,
@@ -55,4 +78,20 @@ def init_sample_data():
         )
     except Exception as e:
         logger.error(f"Error loading sample data: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Lỗi khởi tạo dữ liệu mẫu: {str(e)}")
+        raise HTTPException(status_code=500, detail="Lỗi khởi tạo dữ liệu mẫu.")
+
+
+@router.post("/sync", summary="Đồng bộ ngay phòng trọ từ core-service")
+def sync_rooms_from_core():
+    """Kéo toàn bộ phòng đang cho thuê từ core-service và làm mới chỉ mục tìm kiếm."""
+    if not core_room_sync.enabled:
+        raise HTTPException(status_code=409, detail="CORE_SERVICE_URL chưa được cấu hình.")
+    try:
+        return core_room_sync.sync()
+    except CoreSyncError:
+        raise HTTPException(status_code=502, detail="Không thể đồng bộ dữ liệu từ core-service.")
+
+
+@router.get("/sync/status", summary="Trạng thái đồng bộ phòng gần nhất")
+def sync_status():
+    return {"enabled": core_room_sync.enabled, **core_room_sync.last_status}

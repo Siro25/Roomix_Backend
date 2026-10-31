@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roomix — Thử Face Auth</title>
+  <link rel="stylesheet" href="/demo/assets/style.css">
+  <script type="module" src="/demo/assets/demo.mjs"></script>
+</head>
+<body>
+  <main>
+    <header><p class="eyebrow">ROOMIX / FACE AUTH</p><h1>Kiểm tra camera & khuôn mặt</h1>
+      <p>Công cụ tích hợp cho nhóm phát triển. Cần phiên xác thực thật từ Core.</p></header>
+    <div class="layout">
+      <section class="panel">
+        <h2>Phiên thử nghiệm</h2>
+        <form id="sessionForm" autocomplete="off">
+          <label for="purpose">Chức năng</label>
+          <select id="purpose"><option value="LOGIN">Đăng nhập khuôn mặt</option><option value="ENROLL">Đăng ký khuôn mặt</option></select>
+          <label for="sessionId">authSessionId từ Core</label>
+          <input id="sessionId" required minlength="16" maxlength="128" spellcheck="false" autocomplete="off">
+          <div id="tokenField" hidden>
+            <label for="token">JWT của Admin đã đăng nhập bằng mật khẩu</label>
+            <input id="token" type="password" autocomplete="off" spellcheck="false">
+            <p class="hint">Core xác định adminId từ phiên đăng nhập. Không nhập adminId thủ công.</p>
+          </div>
+          <div class="buttons"><button id="start" type="submit">Bắt đầu</button><button id="stop" type="button" class="secondary" disabled>Dừng camera</button></div>
+        </form>
+        <button id="checkStatus" class="secondary" type="button" disabled>Đọc lại kết quả</button>
+        <p class="hint">JWT chỉ nằm trong bộ nhớ của trang khi gửi yêu cầu đăng ký; không được lưu vào localStorage hoặc URL.</p>
+      </section>
+      <section class="panel camera-panel">
+        <h2>Camera</h2>
+        <video id="camera" autoplay muted playsinline aria-label="Hình ảnh camera"></video>
+        <canvas id="capture" hidden></canvas>
+        <p class="hint">Hình xem trước không lật. Quay về phía được chỉ dẫn trên khung hình.</p>
+        <div id="status" role="status" aria-live="polite">Chưa bắt đầu. Camera chỉ mở khi bạn nhấn Bắt đầu.</div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
