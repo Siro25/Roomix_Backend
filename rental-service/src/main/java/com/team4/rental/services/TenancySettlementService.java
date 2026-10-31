@@ -6,6 +6,10 @@ import java.util.UUID;
 
 public interface TenancySettlementService {
     TenancySettlement preview(UUID landlordId, UUID tenancyId, SettlementPreviewRequest request);
-    TenancySettlement complete(UUID landlordId, UUID tenancyId, CompleteSettlementRequest request);
+    TenancySettlement complete(
+            UUID landlordId,
+            String token,
+            UUID tenancyId,
+            CompleteSettlementRequest request);
     TenancySettlement get(UUID userId, UUID tenancyId);
 }
