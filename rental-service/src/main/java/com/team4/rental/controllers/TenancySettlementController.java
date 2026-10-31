@@ -31,7 +31,7 @@ public class TenancySettlementController {
     public ApiResponse<TenancySettlement> complete(@AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID tenancyId, @Valid @RequestBody CompleteSettlementRequest request) {
         return ApiResponse.<TenancySettlement>builder().data(settlementService.complete(
-                UUID.fromString(jwt.getSubject()), tenancyId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), tenancyId, request)).build();
     }
 
     @GetMapping

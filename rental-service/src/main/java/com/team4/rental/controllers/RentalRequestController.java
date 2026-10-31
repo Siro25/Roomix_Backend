@@ -109,6 +109,7 @@ public class RentalRequestController {
             @PathVariable UUID requestId) {
         RentalRequest rentalRequest = rentalRequestService.cancel(
                 UUID.fromString(jwt.getSubject()),
+                jwt.getTokenValue(),
                 requestId);
 
         return ApiResponse.<RentalRequest>builder()
@@ -143,6 +144,7 @@ public class RentalRequestController {
             @Valid @RequestBody ReasonRequest request) {
         RentalRequest rentalRequest = rentalRequestService.reject(
                 UUID.fromString(jwt.getSubject()),
+                jwt.getTokenValue(),
                 requestId,
                 request);
 

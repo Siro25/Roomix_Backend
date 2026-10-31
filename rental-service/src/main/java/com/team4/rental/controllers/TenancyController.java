@@ -42,14 +42,14 @@ public class TenancyController {
     @PreAuthorize("hasRole('LANDLORD')")
     public ApiResponse<Tenancy> confirmDeposit(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tenancyId) {
         return ApiResponse.<Tenancy>builder().data(tenancyService.confirmDeposit(
-                UUID.fromString(jwt.getSubject()), tenancyId)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), tenancyId)).build();
     }
 
     @PostMapping("/{tenancyId}/cancel")
     public ApiResponse<Tenancy> cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tenancyId,
                                        @Valid @RequestBody ReasonRequest request) {
         return ApiResponse.<Tenancy>builder().data(tenancyService.cancel(
-                UUID.fromString(jwt.getSubject()), tenancyId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), tenancyId, request)).build();
     }
 
     @PostMapping("/{tenancyId}/end")
@@ -57,6 +57,6 @@ public class TenancyController {
     public ApiResponse<Tenancy> end(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tenancyId,
                                     @Valid @RequestBody EndTenancyRequest request) {
         return ApiResponse.<Tenancy>builder().data(tenancyService.end(
-                UUID.fromString(jwt.getSubject()), tenancyId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), tenancyId, request)).build();
     }
 }

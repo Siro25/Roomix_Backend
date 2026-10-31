@@ -7,6 +7,7 @@ import com.team4.rental.entities.*;
 import com.team4.rental.enums.*;
 import com.team4.rental.exceptions.*;
 import com.team4.rental.repositories.*;
+import com.team4.rental.services.AuditService;
 import com.team4.rental.services.InvoiceCorrectionService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,6 +28,7 @@ public class InvoiceCorrectionServiceImpl implements InvoiceCorrectionService {
     private final InvoiceItemRepository items;
     private final InvoiceCorrectionRepository corrections;
     private final VnpayPaymentAttemptRepository vnpayAttempts;
+    private final AuditService auditService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -72,6 +74,8 @@ public class InvoiceCorrectionServiceImpl implements InvoiceCorrectionService {
             throw new InvalidMeterReadingException();
         }
         var invoiceItems = items.findByInvoiceIdOrderByItemType(invoiceId);
+        BigDecimal oldTotalAmount = invoice.getTotalAmount();
+        int oldRevision = invoice.getRevision();
         var oldValues = objectMapper.convertValue(Map.of("invoice", invoice, "meterReading", reading, "items", invoiceItems),
                 InvoiceSnapshot.class);
         BigDecimal electricityUsage = request.getNewElectricityVal().subtract(reading.getOldElectricityVal());
@@ -120,6 +124,18 @@ public class InvoiceCorrectionServiceImpl implements InvoiceCorrectionService {
         corrections.save(InvoiceCorrection.builder().invoiceId(invoiceId).revision(invoice.getRevision())
                 .correctedBy(landlordId).reason(request.getReason().strip())
                 .oldValues(oldValues).newValues(newValues).createdAt(clock.instant()).build());
+        auditService.record(
+                landlordId,
+                "CORRECT_INVOICE",
+                "INVOICE",
+                invoice.getId(),
+                Map.of(
+                        "revision", oldRevision,
+                        "totalAmount", oldTotalAmount.toPlainString()),
+                Map.of(
+                        "revision", invoice.getRevision(),
+                        "totalAmount", invoice.getTotalAmount().toPlainString(),
+                        "reason", request.getReason().strip()));
         return InvoiceDetailResponse.builder().invoice(invoice).meterReading(reading).items(invoiceItems)
                 .outstandingAmount(total).overdue(invoice.getDueDate().isBefore(LocalDate.now(clock))).build();
     }

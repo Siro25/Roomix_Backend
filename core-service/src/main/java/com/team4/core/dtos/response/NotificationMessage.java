@@ -23,6 +23,7 @@ public class NotificationMessage {
     String content;
     NotificationType type;
     UUID referenceId;
+    String targetUrl;
     boolean read;
     Instant readAt;
     Instant createdAt;

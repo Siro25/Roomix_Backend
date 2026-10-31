@@ -18,6 +18,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface PostRepository extends JpaRepository<Post, UUID>, JpaSpecificationExecutor<Post> {
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
 
+    long countByStatus(PostStatus status);
+
     Optional<Post> findFirstByRoomIdAndLandlordIdOrderByCreatedAtDesc(UUID roomId, UUID landlordId);
 
     @EntityGraph(attributePaths = {"room", "room.floor", "room.floor.house"})

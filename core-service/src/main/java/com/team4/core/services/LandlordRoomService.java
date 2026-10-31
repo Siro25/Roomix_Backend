@@ -2,11 +2,14 @@ package com.team4.core.services;
 
 import com.team4.core.dtos.request.LandlordRoomRequest;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.RoomDetailResponse;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface LandlordRoomService {
+    RoomDetailResponse getDetail(UUID landlordId, UUID roomId);
+
     LandlordRoomResponse create(
             UUID landlordId,
             LandlordRoomRequest request,

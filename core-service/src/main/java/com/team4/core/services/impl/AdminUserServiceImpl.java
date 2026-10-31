@@ -125,7 +125,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 NotificationType.SYSTEM,
                 "LANDLORD_REJECTED",
                 "Hồ sơ chủ trọ chưa được duyệt",
-                reason);
+                reason,
+                "/landlord/profile");
         return AdminUserResponse.from(landlord);
     }
 
@@ -154,7 +155,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 NotificationType.SYSTEM,
                 event,
                 title,
-                content);
+                content,
+                user.getRole() == Role.LANDLORD ? "/landlord/profile" : "/profile");
         return AdminUserResponse.from(user);
     }
 

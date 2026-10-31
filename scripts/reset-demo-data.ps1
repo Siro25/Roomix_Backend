@@ -8,6 +8,7 @@ $composeFile = Join-Path $repositoryRoot 'compose.yml'
 $coreResetFile = Join-Path $PSScriptRoot 'demo-reset\reset-core-demo.sql'
 $rentalResetFile = Join-Path $PSScriptRoot 'demo-reset\reset-rental-demo.sql'
 $coreSeedFile = Join-Path $repositoryRoot 'Data.sql'
+$rentalSeedFile = Join-Path $repositoryRoot 'RentalData.sql'
 
 if (-not $Force) {
     $confirmation = Read-Host 'Reset Roomix demo data for admin.seed, landlord.seed and tenant.seed? Type RESET to continue'
@@ -52,12 +53,13 @@ try {
     Invoke-PostgresFile -Service 'rental-db' -Database 'rental_db' -File $rentalResetFile
     Invoke-PostgresFile -Service 'core-db' -Database 'core_db' -File $coreResetFile
     Invoke-PostgresFile -Service 'core-db' -Database 'core_db' -File $coreSeedFile
+    Invoke-PostgresFile -Service 'rental-db' -Database 'rental_db' -File $rentalSeedFile
 
     Write-Host ''
     Write-Host 'Demo data was reset successfully.' -ForegroundColor Green
-    Write-Host 'Accounts: admin.seed, landlord.seed, tenant.seed'
+    Write-Host 'Main accounts: admin.seed, landlord.seed, tenant.seed'
     Write-Host 'Password: Roomix@123'
-    Write-Host 'Room 101 is APPROVED and available; room 201 has a PENDING post for the admin moderation demo.'
+    Write-Host 'Loaded 19 users, 7 houses, 42 rooms, 42 posts, rental requests, contracts and invoices.'
 }
 finally {
     Pop-Location

@@ -18,7 +18,7 @@ public interface RentalRequestService {
 
     RentalRequest get(UUID userId, UUID requestId);
 
-    RentalRequest cancel(UUID tenantId, UUID requestId);
+    RentalRequest cancel(UUID tenantId, String token, UUID requestId);
 
     RentalAcceptanceResponse accept(
             UUID landlordId,
@@ -26,7 +26,11 @@ public interface RentalRequestService {
             UUID requestId,
             AcceptRentalRequest request);
 
-    RentalRequest reject(UUID landlordId, UUID requestId, ReasonRequest request);
+    RentalRequest reject(
+            UUID landlordId,
+            String token,
+            UUID requestId,
+            ReasonRequest request);
 
     ContactCardResponse getContactCard(UUID userId, UUID requestId);
 }

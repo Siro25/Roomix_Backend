@@ -103,7 +103,11 @@ public class TenancySettlementServiceImpl implements TenancySettlementService {
 
     @Override
     @Transactional
-    public TenancySettlement complete(UUID landlordId, UUID tenancyId, CompleteSettlementRequest request) {
+    public TenancySettlement complete(
+            UUID landlordId,
+            String token,
+            UUID tenancyId,
+            CompleteSettlementRequest request) {
         UUID roomId = tenancies.findVisibleRoomId(tenancyId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.ensureRoomLock(roomId);
@@ -149,7 +153,7 @@ public class TenancySettlementServiceImpl implements TenancySettlementService {
         settlement.setSettledBy(landlordId);
         settlement.setCreatedAt(clock.instant());
         settlements.saveAndFlush(settlement);
-        tenancyService.end(landlordId, tenancy.getId(), EndTenancyRequest.builder()
+        tenancyService.end(landlordId, token, tenancy.getId(), EndTenancyRequest.builder()
                 .actualReturnDate(settlement.getActualReturnDate()).build());
         return settlement;
     }
