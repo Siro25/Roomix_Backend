@@ -10,6 +10,36 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
+
+    @Query("""
+            select count(i) from Invoice i, Tenancy t
+            where i.tenancyId = t.id
+              and t.landlordId = :landlordId
+              and i.dueDate < :today
+              and i.paidAmount < i.totalAmount
+            """)
+    long countOverdueByLandlord(UUID landlordId, LocalDate today);
+
+    @Query("""
+            select coalesce(sum(i.totalAmount - i.paidAmount), 0) from Invoice i, Tenancy t
+            where i.tenancyId = t.id
+              and t.landlordId = :landlordId
+              and i.paidAmount < i.totalAmount
+            """)
+    java.math.BigDecimal sumOutstandingByLandlord(UUID landlordId);
+
+    @Query("""
+            select i from Invoice i, Tenancy t
+            where i.tenancyId = t.id
+              and t.landlordId = :landlordId
+              and i.dueDate < :today
+              and i.paidAmount < i.totalAmount
+            """)
+    Page<Invoice> findOverdueByLandlord(
+            UUID landlordId,
+            LocalDate today,
+            Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from Invoice i where i.tenancyId = :tenancyId order by i.billingMonth, i.id")
     List<Invoice> lockAllForTenancy(UUID tenancyId);

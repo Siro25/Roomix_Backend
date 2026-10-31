@@ -10,6 +10,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 
 public interface TenancyRepository extends JpaRepository<Tenancy, UUID> {
+
+    long countByLandlordIdAndStatus(UUID landlordId, TenancyStatus status);
+
+    Page<Tenancy> findByLandlordIdAndStatus(
+            UUID landlordId,
+            TenancyStatus status,
+            Pageable pageable);
+
     @Query("""
             select t from Tenancy t where (t.landlordId = :userId or t.tenantId = :userId)
               and (:status is null or t.status = :status)
