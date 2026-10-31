@@ -1,6 +1,6 @@
 # Reset dữ liệu demo Roomix
 
-Script này chỉ xóa dữ liệu nghiệp vụ của ba tài khoản seed và hai phòng mẫu, sau đó nạp lại `Data.sql` cho Core Service. Nó không truncate database và không xóa các tài khoản khác.
+Script này chỉ xóa dữ liệu nghiệp vụ thuộc nhóm tài khoản demo, sau đó nạp lại `Data.sql` cho Core Service và `RentalData.sql` cho Rental Service. Nó không truncate database và không xóa tài khoản thật nằm ngoài dải seed.
 
 Các file SQL được copy trực tiếp vào container PostgreSQL trước khi chạy, nên dữ liệu tiếng Việt UTF-8 được giữ nguyên trên Windows.
 
@@ -20,8 +20,9 @@ Gõ `RESET` khi script yêu cầu xác nhận. Khi cần chạy tự động:
 
 ## Trạng thái sau reset
 
-- `admin.seed`, `landlord.seed`, `tenant.seed` đều ở trạng thái `ACTIVE`.
-- Mật khẩu của ba tài khoản là `Roomix@123`.
-- Phòng `101` có bài đăng `APPROVED`, chưa có người thuê, phù hợp để demo tìm kiếm, yêu thích và gửi yêu cầu thuê.
-- Phòng `201` có bài đăng `PENDING`, phù hợp để demo Admin duyệt/từ chối bài đăng.
-- Rental Service không còn rental request, hợp đồng, hóa đơn, giao dịch VNPAY, contact card, meter reading hoặc event của dữ liệu demo.
+- Tài khoản chính: `admin.seed`, `landlord.seed`, `tenant.seed`; mật khẩu `Roomix@123`.
+- Tài khoản bổ sung: `landlord.demo.4` đến `landlord.demo.7` và `tenant.demo.8` đến `tenant.demo.19`, dùng cùng mật khẩu.
+- Core có 7 nhà, 14 tầng, 42 phòng/bài đăng với đủ trạng thái `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `HIDDEN`.
+- Có sẵn hình ảnh, yêu thích, thông báo, báo cáo vi phạm và lịch sử audit để demo các màn hình Admin/Tenant.
+- Rental có yêu cầu thuê, hợp đồng `PENDING`/`ACTIVE`/`ENDED`, hóa đơn `PENDING`/`CONFIRMED`/`PAID`, nhắc thanh toán, contact card và event đã phát.
+- Phòng `101` vẫn là phòng `APPROVED`, chưa thuê; phù hợp để demo tìm kiếm và gửi yêu cầu mới.
