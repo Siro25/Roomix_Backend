@@ -124,9 +124,11 @@ class FaceWorkflow:
             photo = exc.photo or photo
             if reason == "FRAME_TOO_FAST":
                 raise WorkflowError(429, reason) from exc
-            if reason == "FACE_TOO_BLURRY":
-                # A transition frame can be blurred while the user turns their
-                # head. Do not accept it or end the whole session immediately.
+            if reason in {"FACE_TOO_BLURRY", "LOW_FACE_QUALITY", "NO_FACE",
+                          "FACE_OUTSIDE_IMAGE", "INVALID_LANDMARKS", "HEAD_TOO_TILTED"}:
+                # Recover capture/pose errors without accepting the frame. Keep
+                # the same deadline and frame budget: retries never extend them.
+                # Multiple faces and identity changes remain terminal failures.
                 now = self.clock()
                 state.setdefault("stepStartedAt", now)
                 state["hits"] = 0

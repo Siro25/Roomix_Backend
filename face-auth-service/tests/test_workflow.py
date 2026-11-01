@@ -165,9 +165,22 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.notifications()[0][2], b"sanitized-photo")
 
     def test_failed_enrollment_does_not_send_photo(self):
-        self.analyzer.failure = "NO_FACE"
+        self.analyzer.failure = "MULTIPLE_FACES"
         self.assertEqual(self.frame(self.start("ENROLL"), "CENTER")["status"], "FAILED")
         self.assertEqual(self.notifications(), [])
+
+    def test_temporary_capture_errors_can_recover_without_core_callback(self):
+        for reason in ("NO_FACE", "LOW_FACE_QUALITY", "INVALID_LANDMARKS",
+                       "HEAD_TOO_TILTED", "FACE_OUTSIDE_IMAGE"):
+            with self.subTest(reason=reason):
+                challenge = self.start(session_id=reason.ljust(32, "x"))
+                self.analyzer.failure = reason
+                response = self.frame(challenge, "CENTER")
+                self.assertEqual(response["status"], "IN_PROGRESS")
+                self.assertEqual(response["reason"], reason)
+                self.assertEqual(self.core.results, [])
+                self.analyzer.failure = None
+                self.assertEqual(self.frame(challenge, "CENTER")["status"], "IN_PROGRESS")
 
     def test_cannot_switch_person_during_liveness(self):
         challenge = self.start()

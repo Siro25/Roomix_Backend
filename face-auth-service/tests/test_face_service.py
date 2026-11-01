@@ -104,10 +104,37 @@ class FaceServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(FaceRejected, "MULTIPLE_FACES"):
             self.analyze()
 
+    def test_generic_yolo_cannot_veto_a_valid_face_or_add_inference_cost(self):
+        self.service.detect_faces.return_value = []
+        self.assertEqual(self.analyze().pose, "CENTER")
+        self.service.detect_faces.assert_not_called()
+
     def test_no_face_is_rejected(self):
         self.service.mtcnn.detect.return_value = None, None, None
         with self.assertRaisesRegex(FaceRejected, "NO_FACE"):
             self.analyze()
+
+    def test_background_candidate_does_not_count_as_second_confident_face(self):
+        background = np.array([[0, 0, 30, 30]], dtype=float)
+        self.service.mtcnn.detect.return_value = (
+            np.vstack([background, self.boxes]), [0.72, 0.99],
+            np.array([points(80), points()]))
+        observation = self.analyze()
+        self.assertEqual(observation.pose, "CENTER")
+        np.testing.assert_array_equal(self.service.mtcnn.extract.call_args.args[1], self.boxes)
+
+    def test_small_second_confident_face_is_not_silently_ignored(self):
+        self.service.mtcnn.detect.return_value = (
+            np.vstack([self.boxes, [[0, 0, 30, 30]]]), [0.99, 0.96], None)
+        with self.assertRaisesRegex(FaceRejected, "MULTIPLE_FACES"):
+            self.analyze()
+
+    def test_only_background_candidates_cannot_authenticate(self):
+        self.service.mtcnn.detect.return_value = (
+            np.vstack([self.boxes, self.boxes]), [0.72, 0.8], None)
+        with self.assertRaisesRegex(FaceRejected, "LOW_FACE_QUALITY"):
+            self.analyze()
+        self.service.facenet.assert_not_called()
 
     def test_low_confidence_is_rejected(self):
         self.service.mtcnn.detect.return_value = self.boxes, [0.5], np.array([points()])
