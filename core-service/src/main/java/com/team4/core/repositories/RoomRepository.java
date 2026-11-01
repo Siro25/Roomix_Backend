@@ -1,6 +1,7 @@
 package com.team4.core.repositories;
 
 import com.team4.core.entities.Room;
+import com.team4.core.enums.RoomStatus;
 import java.util.Optional;
 import java.util.UUID;
 import jakarta.persistence.LockModeType;
@@ -19,4 +20,20 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
     Optional<Room> lockById(@Param("roomId") UUID roomId);
+
+    long countByStatus(RoomStatus status);
+
+    long countByStatusAndRentedFalse(RoomStatus status);
+
+    long countByRentedTrue();
+
+    long countByFloorHouseLandlordId(UUID landlordId);
+
+    long countByFloorHouseLandlordIdAndStatus(UUID landlordId, RoomStatus status);
+
+    long countByFloorHouseLandlordIdAndStatusAndRentedFalse(
+            UUID landlordId,
+            RoomStatus status);
+
+    long countByFloorHouseLandlordIdAndRentedTrue(UUID landlordId);
 }

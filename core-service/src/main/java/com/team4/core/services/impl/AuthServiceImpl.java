@@ -12,6 +12,7 @@ import com.team4.core.dtos.response.UserProfileResponse;
 import com.team4.core.entities.PasswordResetToken;
 import com.team4.core.entities.RefreshToken;
 import com.team4.core.entities.User;
+import com.team4.core.enums.NotificationType;
 import com.team4.core.enums.Role;
 import com.team4.core.enums.UserStatus;
 import com.team4.core.events.PasswordResetRequestedEvent;
@@ -22,6 +23,7 @@ import com.team4.core.repositories.RefreshTokenRepository;
 import com.team4.core.repositories.UserRepository;
 import com.team4.core.security.CustomUserDetails;
 import com.team4.core.security.JwtTokenProvider;
+import com.team4.core.services.AccountNotificationService;
 import com.team4.core.services.AuthService;
 import com.team4.core.services.AuthSession;
 import com.team4.core.notifications.AuthTelegramAlerts;
@@ -59,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetProperties passwordResetProperties;
     private final RefreshTokenProperties refreshTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccountNotificationService notificationService;
 
     @Transactional
     public AuthSession register(RegisterRequest request) {
@@ -81,6 +84,16 @@ public class AuthServiceImpl implements AuthService {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
             throw duplicateException(exception);
+        }
+        if (user.getRole() == Role.LANDLORD) {
+            userRepository.findAllByRole(Role.ADMIN).forEach(admin -> notificationService.send(
+                    admin.getId(),
+                    user.getId(),
+                    NotificationType.SYSTEM,
+                    "LANDLORD_REGISTRATION_PENDING",
+                    "Có hồ sơ chủ trọ mới",
+                    user.getFullName() + " vừa đăng ký và đang chờ xác minh.",
+                    "/admin/users"));
         }
         return registrationResponse(user);
     }

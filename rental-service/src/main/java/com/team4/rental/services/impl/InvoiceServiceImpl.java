@@ -5,17 +5,21 @@ import com.team4.rental.dtos.response.InvoiceDetailResponse;
 import com.team4.rental.dtos.response.InvoiceSummaryResponse;
 import com.team4.rental.entities.*;
 import com.team4.rental.enums.*;
+import com.team4.rental.events.RentalNotificationEvent;
 import com.team4.rental.exceptions.*;
 import com.team4.rental.repositories.*;
+import com.team4.rental.services.AuditService;
 import com.team4.rental.services.InvoiceService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,11 +31,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceRepository invoices;
     private final InvoiceItemRepository invoiceItems;
     private final VnpayPaymentAttemptRepository vnpayAttempts;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
     private final Clock clock;
 
     @Override
     @Transactional
-    public InvoiceDetailResponse create(UUID landlordId, CreateInvoiceRequest request) {
+    public InvoiceDetailResponse create(
+            UUID landlordId,
+            String token,
+            CreateInvoiceRequest request) {
         // Tất cả các thao tác tạo hóa đơn và chấm dứt hợp đồng đều được xử lý tuần tự trên cùng một dòng hợp đồng
         var tenancy = tenancies.lockOwned(request.getTenancyId(), landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
@@ -100,6 +109,30 @@ public class InvoiceServiceImpl implements InvoiceService {
                 InvoiceItem.builder().invoiceId(invoice.getId()).itemName("Tiền nước")
                         .itemType(InvoiceItemType.WATER).quantity(waterUsage)
                         .unitPrice(tenancy.getWaterUnitPrice()).totalPrice(waterAmount).build()));
+        auditService.record(
+                landlordId,
+                "CREATE_INVOICE",
+                "INVOICE",
+                invoice.getId(),
+                Map.of(),
+                Map.of(
+                        "status", invoice.getStatus().name(),
+                        "tenancyId", invoice.getTenancyId().toString(),
+                        "billingMonth", invoice.getBillingMonth(),
+                        "totalAmount", invoice.getTotalAmount().toPlainString()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getTenantId())
+                        .referenceId(invoice.getId())
+                        .type("INVOICE")
+                        .event("INVOICE_CREATED")
+                        .title("Bạn có hóa đơn mới")
+                        .content("Hóa đơn " + invoice.getInvoiceCode() + " kỳ "
+                                + invoice.getBillingMonth() + " đã được lập.")
+                        .targetUrl("/invoices")
+                        .build())
+                .build());
         return InvoiceDetailResponse.builder().invoice(invoice).meterReading(reading).items(items)
                 .overdue(invoice.getDueDate().isBefore(LocalDate.now(clock)))
                 .outstandingAmount(total).build();
@@ -137,7 +170,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional
-    public Invoice confirm(UUID tenantId, UUID invoiceId) {
+    public Invoice confirm(UUID tenantId, String token, UUID invoiceId) {
         var invoice = invoices.lockById(invoiceId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         var tenancy = tenancies.findVisible(invoice.getTenancyId(), tenantId)
@@ -156,15 +189,42 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
         invoice.setStatus(InvoiceStatus.CONFIRMED);
         invoice.setConfirmedAt(clock.instant());
-        return invoices.save(invoice);
+        Invoice savedInvoice = invoices.save(invoice);
+        auditService.record(
+                tenantId,
+                "CONFIRM_INVOICE",
+                "INVOICE",
+                savedInvoice.getId(),
+                Map.of("status", InvoiceStatus.PENDING.name()),
+                Map.of(
+                        "status", InvoiceStatus.CONFIRMED.name(),
+                        "confirmedAt", savedInvoice.getConfirmedAt().toString()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getLandlordId())
+                        .referenceId(savedInvoice.getId())
+                        .type("INVOICE")
+                        .event("INVOICE_CONFIRMED")
+                        .title("Khách thuê đã xác nhận hóa đơn")
+                        .content("Hóa đơn " + savedInvoice.getInvoiceCode()
+                                + " đã được khách thuê xác nhận.")
+                        .targetUrl("/landlord/invoices")
+                        .build())
+                .build());
+        return savedInvoice;
     }
 
     @Override
     @Transactional
-    public Invoice pay(UUID landlordId, UUID invoiceId, PaymentRequest request) {
+    public Invoice pay(
+            UUID landlordId,
+            String token,
+            UUID invoiceId,
+            PaymentRequest request) {
         var invoice = invoices.lockById(invoiceId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-        tenancies.findByIdAndLandlordId(invoice.getTenancyId(), landlordId)
+        var tenancy = tenancies.findByIdAndLandlordId(invoice.getTenancyId(), landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (vnpayAttempts.findByInvoiceIdAndStatus(invoiceId, VnpayPaymentStatus.PENDING)
                 .filter(attempt -> attempt.getExpiresAt().isAfter(clock.instant())).isPresent()) {
@@ -183,12 +243,43 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setPaidAmount(invoice.getTotalAmount());
         invoice.setPaymentMethod(request.getPaymentMethod());
         invoice.setPaymentDate(clock.instant());
-        return invoices.save(invoice);
+        Invoice savedInvoice = invoices.save(invoice);
+        auditService.record(
+                landlordId,
+                "PAY_INVOICE",
+                "INVOICE",
+                savedInvoice.getId(),
+                Map.of(
+                        "status", InvoiceStatus.CONFIRMED.name(),
+                        "paidAmount", "0"),
+                Map.of(
+                        "status", InvoiceStatus.PAID.name(),
+                        "paidAmount", savedInvoice.getPaidAmount().toPlainString(),
+                        "paymentMethod", savedInvoice.getPaymentMethod(),
+                        "paymentDate", savedInvoice.getPaymentDate().toString()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getTenantId())
+                        .referenceId(savedInvoice.getId())
+                        .type("INVOICE")
+                        .event("INVOICE_PAID")
+                        .title("Hóa đơn đã được ghi nhận thanh toán")
+                        .content("Chủ trọ đã xác nhận thu đủ hóa đơn "
+                                + savedInvoice.getInvoiceCode() + ".")
+                        .targetUrl("/invoices")
+                        .build())
+                .build());
+        return savedInvoice;
     }
 
     @Override
     @Transactional
-    public Invoice dispute(UUID tenantId, UUID invoiceId, ReasonRequest request) {
+    public Invoice dispute(
+            UUID tenantId,
+            String token,
+            UUID invoiceId,
+            ReasonRequest request) {
         var invoice = invoices.lockById(invoiceId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         var tenancy = tenancies.findVisible(invoice.getTenancyId(), tenantId)
@@ -203,20 +294,51 @@ public class InvoiceServiceImpl implements InvoiceService {
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_STATE);
         }
+        InvoiceStatus previousStatus = invoice.getStatus();
         invoice.setDisputed(true);
         invoice.setDisputeReason(request.getReason().strip());
         invoice.setDisputeResolution(null);
         invoice.setStatus(InvoiceStatus.PENDING);
         invoice.setConfirmedAt(null);
-        return invoices.save(invoice);
+        Invoice savedInvoice = invoices.save(invoice);
+        auditService.record(
+                tenantId,
+                "DISPUTE_INVOICE",
+                "INVOICE",
+                savedInvoice.getId(),
+                Map.of(
+                        "status", previousStatus.name(),
+                        "disputed", false),
+                Map.of(
+                        "status", InvoiceStatus.PENDING.name(),
+                        "disputed", true,
+                        "reason", savedInvoice.getDisputeReason()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getLandlordId())
+                        .referenceId(savedInvoice.getId())
+                        .type("INVOICE")
+                        .event("INVOICE_DISPUTED")
+                        .title("Hóa đơn có khiếu nại")
+                        .content("Khách thuê khiếu nại hóa đơn " + savedInvoice.getInvoiceCode()
+                                + ". Lý do: " + savedInvoice.getDisputeReason())
+                        .targetUrl("/landlord/invoices")
+                        .build())
+                .build());
+        return savedInvoice;
     }
 
     @Override
     @Transactional
-    public Invoice resolveDispute(UUID landlordId, UUID invoiceId, ReasonRequest request) {
+    public Invoice resolveDispute(
+            UUID landlordId,
+            String token,
+            UUID invoiceId,
+            ReasonRequest request) {
         var invoice = invoices.lockById(invoiceId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
-        tenancies.findByIdAndLandlordId(invoice.getTenancyId(), landlordId)
+        var tenancy = tenancies.findByIdAndLandlordId(invoice.getTenancyId(), landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         if (!invoice.isDisputed() || invoice.getStatus() == InvoiceStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_STATE);
@@ -226,6 +348,30 @@ public class InvoiceServiceImpl implements InvoiceService {
         // Tenant must confirm again after resolution. Resolution never marks an invoice paid.
         invoice.setStatus(InvoiceStatus.PENDING);
         invoice.setConfirmedAt(null);
-        return invoices.save(invoice);
+        Invoice savedInvoice = invoices.save(invoice);
+        auditService.record(
+                landlordId,
+                "RESOLVE_INVOICE_DISPUTE",
+                "INVOICE",
+                savedInvoice.getId(),
+                Map.of("disputed", true),
+                Map.of(
+                        "status", InvoiceStatus.PENDING.name(),
+                        "disputed", false,
+                        "resolution", savedInvoice.getDisputeResolution()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getTenantId())
+                        .referenceId(savedInvoice.getId())
+                        .type("INVOICE")
+                        .event("INVOICE_DISPUTE_RESOLVED")
+                        .title("Khiếu nại hóa đơn đã được xử lý")
+                        .content("Chủ trọ đã phản hồi hóa đơn " + savedInvoice.getInvoiceCode()
+                                + ". Vui lòng kiểm tra và xác nhận lại.")
+                        .targetUrl("/invoices")
+                        .build())
+                .build());
+        return savedInvoice;
     }
 }

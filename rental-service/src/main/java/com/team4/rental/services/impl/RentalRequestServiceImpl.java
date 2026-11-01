@@ -1,6 +1,7 @@
 package com.team4.rental.services.impl;
 
 import com.team4.rental.dtos.request.AcceptRentalRequest;
+import com.team4.rental.dtos.request.CoreNotificationRequest;
 import com.team4.rental.dtos.request.ReasonRequest;
 import com.team4.rental.dtos.request.SendRentalRequest;
 import com.team4.rental.dtos.response.ContactCardResponse;
@@ -12,6 +13,7 @@ import com.team4.rental.entities.Tenancy;
 import com.team4.rental.enums.RequestStatus;
 import com.team4.rental.enums.TenancyStatus;
 import com.team4.rental.events.ContactCardIssuedEvent;
+import com.team4.rental.events.RentalNotificationEvent;
 import com.team4.rental.exceptions.AppException;
 import com.team4.rental.exceptions.DoubleBookingException;
 import com.team4.rental.exceptions.ErrorCode;
@@ -20,12 +22,14 @@ import com.team4.rental.repositories.ActiveTenancyRepository;
 import com.team4.rental.repositories.ContactCardRepository;
 import com.team4.rental.repositories.RentalRequestRepository;
 import com.team4.rental.repositories.TenancyRepository;
+import com.team4.rental.services.AuditService;
 import com.team4.rental.services.RentalRequestService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,6 +47,7 @@ public class RentalRequestServiceImpl implements RentalRequestService {
     private final ContactCardRepository contactCardRepository;
     private final CoreServiceClient coreServiceClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
     private final Clock clock;
 
     @Override
@@ -90,7 +95,20 @@ public class RentalRequestServiceImpl implements RentalRequestService {
                 .note(request.getNote())
                 .status(RequestStatus.PENDING)
                 .build();
-        return rentalRequestRepository.save(rentalRequest);
+        RentalRequest savedRequest = rentalRequestRepository.save(rentalRequest);
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(savedRequest.getLandlordId())
+                        .referenceId(savedRequest.getId())
+                        .type("INTEREST_REQUEST")
+                        .event("RENTAL_REQUEST_CREATED")
+                        .title("Có yêu cầu thuê phòng mới")
+                        .content("Một khách thuê vừa gửi yêu cầu thuê phòng của bạn.")
+                        .targetUrl("/landlord/requests")
+                        .build())
+                .build());
+        return savedRequest;
     }
 
     @Override
@@ -112,7 +130,7 @@ public class RentalRequestServiceImpl implements RentalRequestService {
 
     @Override
     @Transactional
-    public RentalRequest cancel(UUID tenantId, UUID requestId) {
+    public RentalRequest cancel(UUID tenantId, String token, UUID requestId) {
         UUID roomId = rentalRequestRepository.findTenantRoomId(requestId, tenantId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancyRepository.ensureRoomLock(roomId);
@@ -128,7 +146,20 @@ public class RentalRequestServiceImpl implements RentalRequestService {
         }
 
         rentalRequest.setStatus(RequestStatus.CANCELLED);
-        return rentalRequestRepository.save(rentalRequest);
+        RentalRequest savedRequest = rentalRequestRepository.save(rentalRequest);
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(savedRequest.getLandlordId())
+                        .referenceId(savedRequest.getId())
+                        .type("INTEREST_REQUEST")
+                        .event("RENTAL_REQUEST_CANCELLED")
+                        .title("Yêu cầu thuê đã được hủy")
+                        .content("Khách thuê đã hủy một yêu cầu thuê đang chờ xử lý.")
+                        .targetUrl("/landlord/requests")
+                        .build())
+                .build());
+        return savedRequest;
     }
 
     @Override
@@ -237,6 +268,11 @@ public class RentalRequestServiceImpl implements RentalRequestService {
 
         rentalRequest.setStatus(RequestStatus.ACCEPTED);
         rentalRequestRepository.saveAndFlush(rentalRequest);
+        List<RentalRequest> otherPendingRequests = rentalRequestRepository
+                .findByRoomIdAndStatusAndIdNot(
+                        roomId,
+                        RequestStatus.PENDING,
+                        requestId);
         rentalRequestRepository.rejectOtherPending(
                 roomId,
                 requestId,
@@ -257,11 +293,37 @@ public class RentalRequestServiceImpl implements RentalRequestService {
                         : request.getContactNote().strip())
                 .build());
 
+        auditService.record(
+                landlordId,
+                "CREATE_TENANCY",
+                "TENANCY",
+                tenancy.getId(),
+                Map.of(),
+                Map.of(
+                        "status", tenancy.getStatus().name(),
+                        "roomId", tenancy.getRoomId().toString(),
+                        "tenantId", tenancy.getTenantId().toString(),
+                        "depositDeadline", tenancy.getDepositDeadline().toString()));
+
         eventPublisher.publishEvent(ContactCardIssuedEvent.builder()
                 .tenantId(rentalRequest.getTenantId())
                 .rentalRequestId(requestId)
                 .accessToken(token)
                 .build());
+        for (RentalRequest rejectedRequest : otherPendingRequests) {
+            eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                    .accessToken(token)
+                    .notification(CoreNotificationRequest.builder()
+                            .userId(rejectedRequest.getTenantId())
+                            .referenceId(rejectedRequest.getId())
+                            .type("INTEREST_REQUEST")
+                            .event("RENTAL_REQUEST_REJECTED")
+                            .title("Yêu cầu thuê chưa được chấp nhận")
+                            .content("Phòng đã được chấp nhận cho một yêu cầu thuê khác.")
+                            .targetUrl("/requests")
+                            .build())
+                    .build());
+        }
 
         ContactCardResponse contactCardResponse = ContactCardResponse.builder()
                 .id(contactCard.getId())
@@ -283,7 +345,11 @@ public class RentalRequestServiceImpl implements RentalRequestService {
 
     @Override
     @Transactional
-    public RentalRequest reject(UUID landlordId, UUID requestId, ReasonRequest request) {
+    public RentalRequest reject(
+            UUID landlordId,
+            String token,
+            UUID requestId,
+            ReasonRequest request) {
         UUID roomId = rentalRequestRepository.findOwnedRoomId(requestId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancyRepository.ensureRoomLock(roomId);
@@ -297,7 +363,20 @@ public class RentalRequestServiceImpl implements RentalRequestService {
 
         rentalRequest.setStatus(RequestStatus.REJECTED);
         rentalRequest.setRejectReason(request.getReason().strip());
-        return rentalRequestRepository.save(rentalRequest);
+        RentalRequest savedRequest = rentalRequestRepository.save(rentalRequest);
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(savedRequest.getTenantId())
+                        .referenceId(savedRequest.getId())
+                        .type("INTEREST_REQUEST")
+                        .event("RENTAL_REQUEST_REJECTED")
+                        .title("Yêu cầu thuê bị từ chối")
+                        .content("Lý do: " + savedRequest.getRejectReason())
+                        .targetUrl("/requests")
+                        .build())
+                .build());
+        return savedRequest;
     }
 
     @Override

@@ -27,7 +27,7 @@ public class InvoiceController {
     public ApiResponse<InvoiceDetailResponse> create(@AuthenticationPrincipal Jwt jwt,
                                                      @Valid @RequestBody CreateInvoiceRequest request) {
         return ApiResponse.<InvoiceDetailResponse>builder().data(invoiceService.create(
-                UUID.fromString(jwt.getSubject()), request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), request)).build();
     }
 
     @GetMapping
@@ -54,7 +54,7 @@ public class InvoiceController {
     @PreAuthorize("hasRole('TENANT')")
     public ApiResponse<Invoice> confirm(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID invoiceId) {
         return ApiResponse.<Invoice>builder().data(invoiceService.confirm(
-                UUID.fromString(jwt.getSubject()), invoiceId)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), invoiceId)).build();
     }
 
     @PostMapping("/{invoiceId}/pay")
@@ -62,7 +62,7 @@ public class InvoiceController {
     public ApiResponse<Invoice> pay(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID invoiceId,
                                     @Valid @RequestBody PaymentRequest request) {
         return ApiResponse.<Invoice>builder().data(invoiceService.pay(
-                UUID.fromString(jwt.getSubject()), invoiceId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), invoiceId, request)).build();
     }
 
     @PostMapping("/{invoiceId}/dispute")
@@ -70,7 +70,7 @@ public class InvoiceController {
     public ApiResponse<Invoice> dispute(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID invoiceId,
                                         @Valid @RequestBody ReasonRequest request) {
         return ApiResponse.<Invoice>builder().data(invoiceService.dispute(
-                UUID.fromString(jwt.getSubject()), invoiceId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), invoiceId, request)).build();
     }
 
     @PostMapping("/{invoiceId}/resolve-dispute")
@@ -78,6 +78,6 @@ public class InvoiceController {
     public ApiResponse<Invoice> resolveDispute(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID invoiceId,
                                                @Valid @RequestBody ReasonRequest request) {
         return ApiResponse.<Invoice>builder().data(invoiceService.resolveDispute(
-                UUID.fromString(jwt.getSubject()), invoiceId, request)).build();
+                UUID.fromString(jwt.getSubject()), jwt.getTokenValue(), invoiceId, request)).build();
     }
 }

@@ -1,8 +1,10 @@
 package com.team4.core.controllers;
 
 import com.team4.core.dtos.request.ContactCardNotificationRequest;
+import com.team4.core.dtos.request.RentalNotificationRequest;
 import com.team4.core.dtos.response.ApiResponse;
 import com.team4.core.dtos.response.CoreAccountResponse;
+import com.team4.core.dtos.response.CoreLandlordDashboardResponse;
 import com.team4.core.dtos.response.CoreRoomResponse;
 import com.team4.core.dtos.response.LandlordContactResponse;
 import com.team4.core.entities.Post;
@@ -14,9 +16,12 @@ import com.team4.core.exception.ErrorCode;
 import com.team4.core.repositories.PostRepository;
 import com.team4.core.repositories.UserRepository;
 import com.team4.core.services.AccountNotificationService;
+import com.team4.core.services.CoreLandlordDashboardService;
 import com.team4.core.services.UserService;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,10 +39,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
 public class InternalRentalController {
+    private static final Map<String, Set<String>> ALLOWED_NOTIFICATION_EVENTS = Map.of(
+            "TENANT", Set.of(
+                    "RENTAL_REQUEST_CREATED",
+                    "RENTAL_REQUEST_CANCELLED",
+                    "TENANCY_CANCELLED",
+                    "INVOICE_CONFIRMED",
+                    "INVOICE_DISPUTED"),
+            "LANDLORD", Set.of(
+                    "RENTAL_REQUEST_REJECTED",
+                    "TENANCY_ACTIVATED",
+                    "TENANCY_CANCELLED",
+                    "TENANCY_ENDED",
+                    "INVOICE_CREATED",
+                    "INVOICE_PAID",
+                    "INVOICE_DISPUTE_RESOLVED"));
+
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final UserService userService;
     private final AccountNotificationService notificationService;
+    private final CoreLandlordDashboardService landlordDashboardService;
 
     @GetMapping("/rooms/{roomId}")
     @Transactional(readOnly = true)
@@ -91,6 +113,20 @@ public class InternalRentalController {
                 .build();
     }
 
+    @GetMapping("/landlords/{landlordId}/dashboard")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ApiResponse<CoreLandlordDashboardResponse> landlordDashboard(
+            @PathVariable UUID landlordId,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (!landlordId.equals(UUID.fromString(jwt.getSubject()))) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        return ApiResponse.<CoreLandlordDashboardResponse>builder()
+                .data(landlordDashboardService.getPropertySummary(landlordId))
+                .build();
+    }
+
     @PostMapping("/notifications/contact-card")
     @PreAuthorize("hasRole('LANDLORD')")
     public ApiResponse<Void> sendContactCardNotification(
@@ -114,10 +150,38 @@ public class InternalRentalController {
                 NotificationType.CONTACT_CARD,
                 "CONTACT_CARD_ISSUED",
                 "Chủ trọ đã chấp nhận yêu cầu thuê",
-                content);
+                content,
+                "/requests");
 
         return ApiResponse.<Void>builder()
                 .message("Đã gửi danh thiếp chủ trọ")
+                .build();
+    }
+
+    @PostMapping("/notifications")
+    public ApiResponse<Void> sendRentalNotification(
+            @Valid @RequestBody RentalNotificationRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String role = jwt.getClaimAsString("role");
+        if (!ALLOWED_NOTIFICATION_EVENTS.getOrDefault(role, Set.of())
+                .contains(request.getEvent())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (!userRepository.existsById(request.getUserId())) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        notificationService.send(
+                request.getUserId(),
+                request.getReferenceId(),
+                request.getType(),
+                request.getEvent(),
+                request.getTitle(),
+                request.getContent(),
+                request.getTargetUrl());
+
+        return ApiResponse.<Void>builder()
+                .message("Đã gửi thông báo nghiệp vụ thuê phòng")
                 .build();
     }
 }

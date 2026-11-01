@@ -10,4 +10,6 @@ public interface HouseRepository extends JpaRepository<House, UUID> {
     List<House> findDistinctByLandlordIdOrderByCreatedAtDesc(UUID landlordId);
 
     Optional<House> findByIdAndLandlordId(UUID id, UUID landlordId);
+
+    long countByLandlordId(UUID landlordId);
 }

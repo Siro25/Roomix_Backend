@@ -34,9 +34,16 @@ class VnpayServiceTest {
     private final InvoiceRepository invoices = mock(InvoiceRepository.class);
     private final TenancyRepository tenancies = mock(TenancyRepository.class);
     private final VnpayPaymentAttemptRepository attempts = mock(VnpayPaymentAttemptRepository.class);
+    private final AuditService auditService = mock(AuditService.class);
     private final VnpayProperties config = new VnpayProperties();
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-25T03:00:00Z"), ZoneOffset.UTC);
-    private final VnpayService service = new VnpayService(config, invoices, tenancies, attempts, clock);
+    private final VnpayService service = new VnpayService(
+            config,
+            invoices,
+            tenancies,
+            attempts,
+            auditService,
+            clock);
     private final UUID tenantId = UUID.randomUUID();
     private final UUID invoiceId = UUID.randomUUID();
 

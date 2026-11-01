@@ -1,9 +1,11 @@
 package com.team4.rental.external;
 
 import com.team4.rental.dtos.request.ContactCardNotificationRequest;
+import com.team4.rental.dtos.request.CoreNotificationRequest;
 import com.team4.rental.dtos.response.ApiResponse;
 import com.team4.rental.dtos.response.CoreAccountResponse;
 import com.team4.rental.dtos.response.CoreLandlordContactResponse;
+import com.team4.rental.dtos.response.CoreLandlordDashboardResponse;
 import com.team4.rental.dtos.response.CoreRoomResponse;
 import com.team4.rental.exceptions.AppException;
 import com.team4.rental.exceptions.ErrorCode;
@@ -96,6 +98,32 @@ public class CoreServiceClient {
         }
     }
 
+    public CoreLandlordDashboardResponse getLandlordDashboard(
+            UUID landlordId,
+            String accessToken) {
+        try {
+            ApiResponse<CoreLandlordDashboardResponse> response = coreRestClient.get()
+                    .uri("/internal/rental/landlords/{landlordId}/dashboard", landlordId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.getData() == null) {
+                throw new AppException(ErrorCode.CORE_UNAVAILABLE);
+            }
+            return response.getData();
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == 401
+                    || exception.getStatusCode().value() == 403) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+            throw new AppException(ErrorCode.CORE_UNAVAILABLE);
+        } catch (RestClientException exception) {
+            throw new AppException(ErrorCode.CORE_UNAVAILABLE);
+        }
+    }
+
     public void sendContactCardNotification(
             UUID tenantId,
             UUID rentalRequestId,
@@ -108,6 +136,27 @@ public class CoreServiceClient {
         try {
             coreRestClient.post()
                     .uri("/internal/rental/notifications/contact-card")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == 401
+                    || exception.getStatusCode().value() == 403) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+            throw new AppException(ErrorCode.CORE_UNAVAILABLE);
+        } catch (RestClientException exception) {
+            throw new AppException(ErrorCode.CORE_UNAVAILABLE);
+        }
+    }
+
+    public void sendNotification(
+            CoreNotificationRequest request,
+            String accessToken) {
+        try {
+            coreRestClient.post()
+                    .uri("/internal/rental/notifications")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .body(request)
                     .retrieve()

@@ -3,6 +3,7 @@ package com.team4.core.controllers;
 import com.team4.core.dtos.request.LandlordRoomRequest;
 import com.team4.core.dtos.response.ApiResponse;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.services.LandlordRoomService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +28,16 @@ import org.springframework.web.multipart.MultipartFile;
 @PreAuthorize("hasRole('LANDLORD')")
 public class LandlordRoomController {
     private final LandlordRoomService landlordRoomService;
+
+    @GetMapping("/{roomId}")
+    public ApiResponse<RoomDetailResponse> getDetail(
+            @PathVariable UUID roomId,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.<RoomDetailResponse>builder()
+                .message("Lấy chi tiết phòng quản lý thành công")
+                .data(landlordRoomService.getDetail(UUID.fromString(jwt.getSubject()), roomId))
+                .build();
+    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<LandlordRoomResponse> create(

@@ -7,9 +7,13 @@ import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.ViolationReportResponse;
 import com.team4.core.entities.ViolationReport;
 import com.team4.core.enums.ReportStatus;
+import com.team4.core.enums.NotificationType;
+import com.team4.core.enums.Role;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
 import com.team4.core.repositories.ViolationReportRepository;
+import com.team4.core.repositories.UserRepository;
+import com.team4.core.services.AccountNotificationService;
 import com.team4.core.services.AuditService;
 import com.team4.core.services.ViolationReportService;
 import java.time.Instant;
@@ -28,6 +32,8 @@ public class ViolationReportServiceImpl implements ViolationReportService {
 
     private final ViolationReportRepository violationReportRepository;
     private final AuditService auditService;
+    private final UserRepository userRepository;
+    private final AccountNotificationService notificationService;
 
     @Override
     @Transactional
@@ -48,6 +54,15 @@ public class ViolationReportServiceImpl implements ViolationReportService {
                 Map.of(),
                 Map.of("status", report.getStatus().name(), "targetType", report.getTargetType().name()),
                 AuditContext.builder().actorId(reporterId).build());
+        userRepository.findAllByRole(Role.ADMIN).forEach(admin -> notificationService.send(
+                admin.getId(),
+                report.getId(),
+                NotificationType.GENERAL,
+                "VIOLATION_REPORT_CREATED",
+                "Có báo cáo vi phạm mới",
+                "Một báo cáo " + report.getTargetType().name()
+                        + " mới đang chờ quản trị viên xử lý.",
+                "/admin/reports"));
         return ViolationReportResponse.from(report);
     }
 
@@ -95,6 +110,14 @@ public class ViolationReportServiceImpl implements ViolationReportService {
                 Map.of("status", oldStatus.name()),
                 Map.of("status", report.getStatus().name()),
                 context);
+        notificationService.send(
+                report.getReporterId(),
+                report.getId(),
+                NotificationType.GENERAL,
+                "VIOLATION_REPORT_REVIEWED",
+                "Báo cáo vi phạm đã được xử lý",
+                "Báo cáo của bạn đã chuyển sang trạng thái " + report.getStatus().name() + ".",
+                "/notifications");
         return ViolationReportResponse.from(report);
     }
 }

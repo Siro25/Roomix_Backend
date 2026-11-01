@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -21,6 +22,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
 
     boolean existsByUsername(String username);
+
+    long countByRole(Role role);
+
+    long countByStatus(UserStatus status);
+
+    long countByRoleAndStatus(Role role, UserStatus status);
+
+    List<User> findAllByRole(Role role);
+
+    Page<User> findByRoleAndStatus(
+            Role role,
+            UserStatus status,
+            Pageable pageable);
 
     @Query("""
             SELECT user

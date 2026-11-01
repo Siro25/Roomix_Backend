@@ -73,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/invoices/vnpay/ipn", "/api/invoices/vnpay/return").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/rentals/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/rentals/**", "/api/tenancies/**", "/api/invoices/**")
                         .hasAnyRole("TENANT", "LANDLORD")
                         .anyRequest().denyAll())

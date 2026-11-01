@@ -1,13 +1,17 @@
 package com.team4.rental.services.impl;
 
 import com.team4.rental.dtos.request.*;
+import com.team4.rental.events.RentalNotificationEvent;
 import com.team4.rental.entities.*;
 import com.team4.rental.enums.*;
 import com.team4.rental.exceptions.*;
 import com.team4.rental.repositories.*;
+import com.team4.rental.services.AuditService;
 import com.team4.rental.services.TenancyService;
+import org.springframework.context.ApplicationEventPublisher;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -21,6 +25,8 @@ public class TenancyServiceImpl implements TenancyService {
     private final ActiveTenancyRepository activeTenancies;
     private final TenancyEventRepository events;
     private final TenancySettlementRepository settlements;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
     private final Clock clock;
 
     @Override
@@ -38,7 +44,7 @@ public class TenancyServiceImpl implements TenancyService {
 
     @Override
     @Transactional
-    public Tenancy confirmDeposit(UUID landlordId, UUID tenancyId) {
+    public Tenancy confirmDeposit(UUID landlordId, String token, UUID tenancyId) {
         UUID roomId = tenancies.findVisibleRoomId(tenancyId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.ensureRoomLock(roomId);
@@ -68,12 +74,38 @@ public class TenancyServiceImpl implements TenancyService {
                 .eventType(TenancyEventType.TENANCY_ACTIVATED).roomId(roomId).tenancyId(tenancyId)
                 .partitionKey(roomId.toString()).topic("rental-events-topic")
                 .occurredAt(clock.instant()).build());
+        auditService.record(
+                landlordId,
+                "ACTIVATE_TENANCY",
+                "TENANCY",
+                tenancy.getId(),
+                Map.of("status", TenancyStatus.PENDING.name()),
+                Map.of(
+                        "status", TenancyStatus.ACTIVE.name(),
+                        "depositConfirmedAt", tenancy.getDepositConfirmedAt().toString()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getTenantId())
+                        .referenceId(tenancy.getId())
+                        .type("SYSTEM")
+                        .event("TENANCY_ACTIVATED")
+                        .title("Hợp đồng thuê đã có hiệu lực")
+                        .content("Chủ trọ đã xác nhận tiền cọc. Hợp đồng "
+                                + tenancy.getContractCode() + " đang hoạt động.")
+                        .targetUrl("/contracts")
+                        .build())
+                .build());
         return tenancy;
     }
 
     @Override
     @Transactional
-    public Tenancy cancel(UUID userId, UUID tenancyId, ReasonRequest request) {
+    public Tenancy cancel(
+            UUID userId,
+            String token,
+            UUID tenancyId,
+            ReasonRequest request) {
         UUID roomId = tenancies.findVisibleRoomId(tenancyId, userId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.ensureRoomLock(roomId);
@@ -88,12 +120,44 @@ public class TenancyServiceImpl implements TenancyService {
         }
         tenancy.setStatus(TenancyStatus.CANCELLED);
         tenancy.setCancellationReason(request.getReason().strip());
-        return tenancies.save(tenancy);
+        Tenancy savedTenancy = tenancies.save(tenancy);
+        auditService.record(
+                userId,
+                "CANCEL_TENANCY",
+                "TENANCY",
+                savedTenancy.getId(),
+                Map.of("status", TenancyStatus.PENDING.name()),
+                Map.of(
+                        "status", TenancyStatus.CANCELLED.name(),
+                        "reason", savedTenancy.getCancellationReason()));
+        UUID recipientId = userId.equals(savedTenancy.getTenantId())
+                ? savedTenancy.getLandlordId()
+                : savedTenancy.getTenantId();
+        String targetUrl = recipientId.equals(savedTenancy.getLandlordId())
+                ? "/landlord/requests"
+                : "/contracts";
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(recipientId)
+                        .referenceId(savedTenancy.getId())
+                        .type("SYSTEM")
+                        .event("TENANCY_CANCELLED")
+                        .title("Hợp đồng chờ cọc đã bị hủy")
+                        .content("Lý do: " + savedTenancy.getCancellationReason())
+                        .targetUrl(targetUrl)
+                        .build())
+                .build());
+        return savedTenancy;
     }
 
     @Override
     @Transactional
-    public Tenancy end(UUID landlordId, UUID tenancyId, EndTenancyRequest request) {
+    public Tenancy end(
+            UUID landlordId,
+            String token,
+            UUID tenancyId,
+            EndTenancyRequest request) {
         UUID roomId = tenancies.findVisibleRoomId(tenancyId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
         tenancies.ensureRoomLock(roomId);
@@ -123,6 +187,28 @@ public class TenancyServiceImpl implements TenancyService {
                 .eventType(TenancyEventType.TENANCY_ENDED).roomId(roomId).tenancyId(tenancyId)
                 .partitionKey(roomId.toString()).topic("rental-events-topic")
                 .occurredAt(clock.instant()).build());
+        auditService.record(
+                landlordId,
+                "END_TENANCY",
+                "TENANCY",
+                tenancy.getId(),
+                Map.of("status", TenancyStatus.ACTIVE.name()),
+                Map.of(
+                        "status", TenancyStatus.ENDED.name(),
+                        "actualReturnDate", tenancy.getActualReturnDate().toString()));
+        eventPublisher.publishEvent(RentalNotificationEvent.builder()
+                .accessToken(token)
+                .notification(CoreNotificationRequest.builder()
+                        .userId(tenancy.getTenantId())
+                        .referenceId(tenancy.getId())
+                        .type("SYSTEM")
+                        .event("TENANCY_ENDED")
+                        .title("Hợp đồng thuê đã kết thúc")
+                        .content("Hợp đồng " + tenancy.getContractCode()
+                                + " đã được quyết toán và kết thúc.")
+                        .targetUrl("/contracts")
+                        .build())
+                .build());
         return tenancy;
     }
 }
