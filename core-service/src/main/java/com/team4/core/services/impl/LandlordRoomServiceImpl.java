@@ -1,7 +1,9 @@
 package com.team4.core.services.impl;
 
 import com.team4.core.dtos.request.LandlordRoomRequest;
+import com.team4.core.dtos.response.LandlordRoomListResponse;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.entities.Floor;
 import com.team4.core.entities.Post;
@@ -24,8 +26,12 @@ import com.team4.core.services.LandlordRoomService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +46,69 @@ public class LandlordRoomServiceImpl implements LandlordRoomService {
     private final ImageStorageService imageStorageService;
     private final UserRepository userRepository;
     private final AccountNotificationService notificationService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LandlordRoomListResponse> getAll(UUID landlordId, Pageable pageable) {
+        Page<Post> posts = postRepository.findByLandlordId(landlordId, pageable);
+        List<UUID> roomIds = posts.getContent().stream()
+                .map(Post::getRoomId)
+                .toList();
+        Map<UUID, List<String>> imageUrlsByRoomId = roomImageRepository
+                .findByRoomIdInOrderByDisplayOrderAsc(roomIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        image -> image.getRoom().getId(),
+                        Collectors.mapping(RoomImage::getImageUrl, Collectors.toList())));
+
+        return PageResponse.from(posts, post -> {
+            Room room = post.getRoom();
+            Floor floor = room.getFloor();
+            var house = floor.getHouse();
+            BigDecimal rentalPrice = post.getRentalPrice() == null
+                    ? room.getBasePrice()
+                    : post.getRentalPrice();
+            RoomDetailResponse detail = RoomDetailResponse.builder()
+                    .postId(post.getId())
+                    .roomId(room.getId())
+                    .houseId(house.getId())
+                    .floorId(floor.getId())
+                    .landlordId(landlordId)
+                    .houseName(house.getName())
+                    .floorName(floor.getName())
+                    .floorNumber(floor.getFloorNumber())
+                    .roomNumber(room.getRoomNumber())
+                    .title(post.getTitle())
+                    .description(post.getDescription())
+                    .rentalPrice(rentalPrice)
+                    .depositAmount(post.getDepositAmount())
+                    .area(room.getArea())
+                    .maxTenants(room.getMaxTenants())
+                    .availableFrom(post.getAvailableFrom())
+                    .addressStreet(house.getAddressStreet())
+                    .ward(house.getWard())
+                    .district(house.getDistrict())
+                    .city(house.getCity())
+                    .hasPrivateBathroom(room.isHasPrivateBathroom())
+                    .hasAirConditioner(room.isHasAirConditioner())
+                    .hasWaterHeater(room.isHasWaterHeater())
+                    .hasBalcony(room.isHasBalcony())
+                    .amenitiesDescription(room.getAmenitiesDescription())
+                    .rented(room.isRented())
+                    .available(!room.isRented() && room.getStatus() == RoomStatus.AVAILABLE)
+                    .imageUrls(imageUrlsByRoomId.getOrDefault(room.getId(), List.of()))
+                    .createdAt(post.getCreatedAt())
+                    .build();
+            return LandlordRoomListResponse.builder()
+                    .landlordId(landlordId)
+                    .basePrice(rentalPrice)
+                    .postStatus(post.getStatus())
+                    .roomStatus(room.getStatus())
+                    .rejectReason(post.getRejectReason())
+                    .detail(detail)
+                    .build();
+        });
+    }
 
     @Override
     @Transactional(readOnly = true)

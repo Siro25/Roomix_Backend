@@ -99,12 +99,54 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO houses (
     id, landlord_id, name, address_street, ward, district, city,
     latitude, longitude, description, total_floors, created_at, updated_at
-) VALUES (
-    '00000000-0000-0000-0000-000000000011',
-    '00000000-0000-0000-0000-000000000002',
-    'Nhà trọ Seed Roomix', '12 Ngõ 100 Cầu Giấy', 'Phường Dịch Vọng',
-    'Quận Cầu Giấy', 'Hà Nội', 21.0333000, 105.7940000,
-    'Dữ liệu mẫu phục vụ kiểm thử E2E Roomix.', 2,
+) VALUES
+(
+    '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000002',
+    'Roomix Central Residence', '12 Nguyễn Huệ', 'Bến Nghé',
+    'Quận 1', 'Hồ Chí Minh', 10.7731000, 106.7030000,
+    'Nhà trọ trung tâm, thuận tiện đi lại và đầy đủ tiện ích.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000002',
+    'Nhà trọ Bình Thạnh Riverside', '86 Xô Viết Nghệ Tĩnh', 'Phường 21',
+    'Bình Thạnh', 'Hồ Chí Minh', 10.7991000, 106.7130000,
+    'Khu trọ gần sông, thoáng mát và gần trung tâm.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000004',
+    'Căn hộ mini Phú Nhuận', '214 Phan Xích Long', 'Phường 7',
+    'Phú Nhuận', 'Hồ Chí Minh', 10.7999000, 106.6853000,
+    'Căn hộ mini trong khu dân cư an ninh, nhiều dịch vụ.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000004',
+    'Ký túc xá Tân Bình', '35 Cộng Hòa', 'Phường 4',
+    'Tân Bình', 'Hồ Chí Minh', 10.8012000, 106.6570000,
+    'Khu ở phù hợp sinh viên và người mới đi làm.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000005',
+    'Studio Thủ Đức', '18 Võ Văn Ngân', 'Linh Chiểu',
+    'Thủ Đức', 'Hồ Chí Minh', 10.8507000, 106.7719000,
+    'Studio gần trường đại học, chợ và tuyến xe buýt.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000016', '00000000-0000-0000-0000-000000000006',
+    'Nhà trọ Quận 7 xanh', '52 Lâm Văn Bền', 'Tân Kiểng',
+    'Quận 7', 'Hồ Chí Minh', 10.7421000, 106.7113000,
+    'Nhà trọ yên tĩnh, nhiều cây xanh và gần khu tiện ích.', 2,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    '00000000-0000-0000-0000-000000000017', '00000000-0000-0000-0000-000000000006',
+    'Phòng trọ Gò Vấp tiện nghi', '120 Quang Trung', 'Phường 10',
+    'Gò Vấp', 'Hồ Chí Minh', 10.8388000, 106.6654000,
+    'Phòng trọ tiện nghi, gần chợ và các tuyến đường lớn.', 2,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -473,21 +515,21 @@ INSERT INTO houses (
     latitude, longitude, description, total_floors, created_at, updated_at
 ) VALUES
 (
-    '00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000112', '00000000-0000-0000-0000-000000000002',
     'Nhà trọ Sinh viên Mỹ Đình', '45 Lê Đức Thọ', 'Phường Mỹ Đình 1',
     'Quận Nam Từ Liêm', 'Hà Nội', 21.0286000, 105.7646000,
     'Khu trọ gần Bến xe Mỹ Đình và các trường đại học, giờ giấc tự do, an ninh tốt.', 2,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
-    '00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000113', '00000000-0000-0000-0000-000000000002',
     'Chung cư mini Thanh Xuân', '88 Nguyễn Trãi', 'Phường Thượng Đình',
     'Quận Thanh Xuân', 'Hà Nội', 20.9950000, 105.8100000,
     'Chung cư mini có thang máy, hầm xe, gần ngã tư Sở và trung tâm.', 2,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
-    '00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000114', '00000000-0000-0000-0000-000000000002',
     'Nhà trọ Hà Đông', '21 Quang Trung', 'Phường Nguyễn Trãi',
     'Quận Hà Đông', 'Hà Nội', 20.9610000, 105.7690000,
     'Khu dân cư yên tĩnh, gần Aeon Mall Hà Đông và Học viện Bưu chính Viễn thông.', 2,
@@ -508,12 +550,12 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO floors (id, house_id, floor_number, name, description)
 VALUES
-('00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000012', 1, 'Tầng 1', 'Phòng giá rẻ cho sinh viên.'),
-('00000000-0000-0000-0000-000000000024', '00000000-0000-0000-0000-000000000012', 2, 'Tầng 2', 'Phòng có gác lửng.'),
-('00000000-0000-0000-0000-000000000025', '00000000-0000-0000-0000-000000000013', 1, 'Tầng 1', 'Studio đầy đủ nội thất.'),
-('00000000-0000-0000-0000-000000000026', '00000000-0000-0000-0000-000000000013', 2, 'Tầng 2', 'Phòng rộng cho cặp đôi.'),
-('00000000-0000-0000-0000-000000000027', '00000000-0000-0000-0000-000000000014', 1, 'Tầng 1', 'Phòng thoáng mát, sân để xe riêng.'),
-('00000000-0000-0000-0000-000000000028', '00000000-0000-0000-0000-000000000014', 2, 'Tầng 2', 'Phòng cao cấp, ban công.')
+('00000000-0000-0000-0000-000000000121', '00000000-0000-0000-0000-000000000112', 1, 'Tầng 1', 'Phòng giá rẻ cho sinh viên.'),
+('00000000-0000-0000-0000-000000000122', '00000000-0000-0000-0000-000000000112', 2, 'Tầng 2', 'Phòng có gác lửng.'),
+('00000000-0000-0000-0000-000000000123', '00000000-0000-0000-0000-000000000113', 1, 'Tầng 1', 'Studio đầy đủ nội thất.'),
+('00000000-0000-0000-0000-000000000124', '00000000-0000-0000-0000-000000000113', 2, 'Tầng 2', 'Phòng rộng cho cặp đôi.'),
+('00000000-0000-0000-0000-000000000125', '00000000-0000-0000-0000-000000000114', 1, 'Tầng 1', 'Phòng thoáng mát, sân để xe riêng.'),
+('00000000-0000-0000-0000-000000000126', '00000000-0000-0000-0000-000000000114', 2, 'Tầng 2', 'Phòng cao cấp, ban công.')
 ON CONFLICT (id) DO UPDATE SET
     house_id = EXCLUDED.house_id,
     floor_number = EXCLUDED.floor_number,
@@ -525,16 +567,16 @@ INSERT INTO rooms (
     has_private_bathroom, has_air_conditioner, has_water_heater,
     has_balcony, amenities_description, is_rented, created_at, updated_at
 ) VALUES
-('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000023', '101', 18.00, 1800000.00, 2, 'AVAILABLE', FALSE, FALSE, FALSE, FALSE, 'Wifi miễn phí, nhà vệ sinh chung, chỗ để xe, gần Bến xe Mỹ Đình.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000023', '102', 20.00, 2300000.00, 2, 'AVAILABLE', TRUE, FALSE, TRUE, FALSE, 'WC riêng, nóng lạnh, wifi, giờ giấc tự do.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000024', '201', 24.00, 2900000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Có gác lửng, máy lạnh, nóng lạnh, wifi, camera an ninh.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000024', '202', 26.00, 3200000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Gác lửng, ban công, máy lạnh, nóng lạnh, gần chợ.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000025', '101', 30.00, 5200000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Studio full nội thất: giường, tủ, bếp, máy giặt, thang máy, hầm xe.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000025', '102', 22.00, 4300000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Phòng nhỏ gọn, nội thất cơ bản, máy lạnh, thang máy, bảo vệ 24/7.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000107', '00000000-0000-0000-0000-000000000026', '201', 35.00, 6500000.00, 4, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Phòng rộng, ban công, bếp riêng, phù hợp cặp đôi hoặc nhóm bạn.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000108', '00000000-0000-0000-0000-000000000027', '101', 25.00, 4000000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Sân để xe riêng, máy lạnh, nóng lạnh, khu yên tĩnh, gần Aeon Mall Hà Đông.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000109', '00000000-0000-0000-0000-000000000028', '201', 32.00, 5800000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Ban công view thoáng, nội thất cao cấp, máy giặt riêng, wifi cáp quang.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('00000000-0000-0000-0000-000000000110', '00000000-0000-0000-0000-000000000028', '202', 28.00, 4900000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Phòng mới xây, máy lạnh inverter, khóa vân tay, camera hành lang.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000121', '101', 18.00, 1800000.00, 2, 'AVAILABLE', FALSE, FALSE, FALSE, FALSE, 'Wifi miễn phí, nhà vệ sinh chung, chỗ để xe, gần Bến xe Mỹ Đình.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000121', '102', 20.00, 2300000.00, 2, 'AVAILABLE', TRUE, FALSE, TRUE, FALSE, 'WC riêng, nóng lạnh, wifi, giờ giấc tự do.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000122', '201', 24.00, 2900000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Có gác lửng, máy lạnh, nóng lạnh, wifi, camera an ninh.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000122', '202', 26.00, 3200000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Gác lửng, ban công, máy lạnh, nóng lạnh, gần chợ.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000123', '101', 30.00, 5200000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Studio full nội thất: giường, tủ, bếp, máy giặt, thang máy, hầm xe.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000123', '102', 22.00, 4300000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Phòng nhỏ gọn, nội thất cơ bản, máy lạnh, thang máy, bảo vệ 24/7.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000107', '00000000-0000-0000-0000-000000000124', '201', 35.00, 6500000.00, 4, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Phòng rộng, ban công, bếp riêng, phù hợp cặp đôi hoặc nhóm bạn.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000108', '00000000-0000-0000-0000-000000000125', '101', 25.00, 4000000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Sân để xe riêng, máy lạnh, nóng lạnh, khu yên tĩnh, gần Aeon Mall Hà Đông.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000109', '00000000-0000-0000-0000-000000000126', '201', 32.00, 5800000.00, 3, 'AVAILABLE', TRUE, TRUE, TRUE, TRUE, 'Ban công view thoáng, nội thất cao cấp, máy giặt riêng, wifi cáp quang.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('00000000-0000-0000-0000-000000000110', '00000000-0000-0000-0000-000000000126', '202', 28.00, 4900000.00, 2, 'AVAILABLE', TRUE, TRUE, TRUE, FALSE, 'Phòng mới xây, máy lạnh inverter, khóa vân tay, camera hành lang.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO UPDATE SET
     floor_id = EXCLUDED.floor_id,
     room_number = EXCLUDED.room_number,

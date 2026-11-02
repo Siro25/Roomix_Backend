@@ -76,6 +76,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
     restart: unless-stopped
 
   rental-service:
@@ -103,7 +109,13 @@ services:
       kafka:
         condition: service_healthy
       core-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8082"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
     restart: unless-stopped
 
   rag-service:
@@ -118,7 +130,7 @@ services:
       CORE_SERVICE_URL: http://core-service:8081
     depends_on:
       core-service:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "127.0.0.1:${RAG_HOST_PORT:-18083}:8083"
     volumes:
@@ -162,7 +174,7 @@ services:
       face-db:
         condition: service_healthy
       core-service:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   api-gateway:
@@ -182,9 +194,9 @@ services:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-18080}:8080"
     depends_on:
       core-service:
-        condition: service_started
+        condition: service_healthy
       rental-service:
-        condition: service_started
+        condition: service_healthy
       rag-service:
         condition: service_started
       face-auth-service:

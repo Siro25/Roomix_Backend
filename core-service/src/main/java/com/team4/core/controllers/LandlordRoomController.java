@@ -2,7 +2,9 @@ package com.team4.core.controllers;
 
 import com.team4.core.dtos.request.LandlordRoomRequest;
 import com.team4.core.dtos.response.ApiResponse;
+import com.team4.core.dtos.response.LandlordRoomListResponse;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.services.LandlordRoomService;
 import jakarta.validation.Valid;
@@ -10,6 +12,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -28,6 +33,19 @@ import org.springframework.web.multipart.MultipartFile;
 @PreAuthorize("hasRole('LANDLORD')")
 public class LandlordRoomController {
     private final LandlordRoomService landlordRoomService;
+
+    @GetMapping
+    public ApiResponse<PageResponse<LandlordRoomListResponse>> getAll(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        PageResponse<LandlordRoomListResponse> response = landlordRoomService.getAll(
+                UUID.fromString(jwt.getSubject()), pageable);
+        return ApiResponse.<PageResponse<LandlordRoomListResponse>>builder()
+                .message("Lấy danh sách phòng quản lý thành công")
+                .data(response)
+                .build();
+    }
 
     @GetMapping("/{roomId}")
     public ApiResponse<RoomDetailResponse> getDetail(

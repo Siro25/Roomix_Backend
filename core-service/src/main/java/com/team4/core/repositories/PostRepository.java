@@ -23,6 +23,9 @@ public interface PostRepository extends JpaRepository<Post, UUID>, JpaSpecificat
     Optional<Post> findFirstByRoomIdAndLandlordIdOrderByCreatedAtDesc(UUID roomId, UUID landlordId);
 
     @EntityGraph(attributePaths = {"room", "room.floor", "room.floor.house"})
+    Page<Post> findByLandlordId(UUID landlordId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"room", "room.floor", "room.floor.house"})
     Optional<Post> findFirstByRoomIdOrderByCreatedAtDesc(UUID roomId);
 
     @Override

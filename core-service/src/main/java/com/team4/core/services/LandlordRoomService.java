@@ -1,13 +1,18 @@
 package com.team4.core.services;
 
 import com.team4.core.dtos.request.LandlordRoomRequest;
+import com.team4.core.dtos.response.LandlordRoomListResponse;
 import com.team4.core.dtos.response.LandlordRoomResponse;
+import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.RoomDetailResponse;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface LandlordRoomService {
+    PageResponse<LandlordRoomListResponse> getAll(UUID landlordId, Pageable pageable);
+
     RoomDetailResponse getDetail(UUID landlordId, UUID roomId);
 
     LandlordRoomResponse create(
