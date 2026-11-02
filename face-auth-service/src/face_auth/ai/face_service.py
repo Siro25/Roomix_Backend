@@ -11,6 +11,8 @@
 import os
 from pathlib import Path
 import threading
+import logging
+import time
 from dataclasses import dataclass
 import cv2
 import numpy as np
@@ -18,6 +20,8 @@ from src.face_auth.ai.image_input import decode_image
 from src.face_auth.ai.errors import FaceRejected, FaceUnavailable
 from src.face_auth.ai.head_pose import classify_pose
 from src.face_auth.ai.matching import normalize
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -86,27 +90,49 @@ class FaceService:
     def analyze(self, content):
         """Nhận ảnh trình duyệt, tái sử dụng YOLO, MTCNN và FaceNet đang có."""
         image, photo = decode_image(content)
-        frame = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        started = time.perf_counter()
+        detected_at = started
+        outcome = "AI_UNAVAILABLE"
+        face_width = face_height = 0
+        sharpness = None
         try:
             with self._inference_lock:
-                yolo_boxes = self.detect_faces(frame)
+                # MTCNN already detects faces and landmarks across the full image.
+                # Generic YOLO's person class is not a face-quality requirement.
+                # Keep the original YOLO helper for callers, but avoid two detectors
+                # on every challenge frame.
                 # Đếm mặt trên toàn ảnh, tránh bỏ sót người thứ hai trong một ROI.
                 boxes, probabilities, landmarks = self.mtcnn.detect(image, landmarks=True)
+                detected_at = time.perf_counter()
                 if boxes is None or len(boxes) == 0:
-                    raise FaceRejected("NO_FACE")
-                if len(boxes) != 1:
-                    raise FaceRejected("MULTIPLE_FACES")
-                if not yolo_boxes:
                     raise FaceRejected("NO_FACE")
                 # MTCNN may return dtype=object even for one face. Normalize the
                 # numeric arrays before NumPy quality checks and face extraction.
                 boxes = np.asarray(boxes, dtype=np.float64)
                 probabilities = np.asarray(probabilities, dtype=np.float64)
-                if boxes.shape != (1, 4) or probabilities.shape != (1,):
+                if boxes.ndim != 2 or boxes.shape[1] != 4 or probabilities.shape != (len(boxes),):
                     raise FaceRejected("LOW_FACE_QUALITY")
+                if not np.isfinite(boxes).all() or not np.isfinite(probabilities).all():
+                    raise FaceRejected("LOW_FACE_QUALITY")
+                # Count only detections meeting the same confidence requirement
+                # as the primary face. Background candidates used to trigger
+                # MULTIPLE_FACES before their confidence was checked.
+                confident = probabilities >= 0.95
+                count = int(confident.sum())
+                logger.debug("face_candidates raw=%d confident=%d", len(boxes), count)
+                if count == 0:
+                    raise FaceRejected("LOW_FACE_QUALITY")
+                if count > 1:
+                    raise FaceRejected("MULTIPLE_FACES")
+                if not confident.all():
+                    boxes = boxes[confident]
+                    probabilities = probabilities[confident]
+                    if landmarks is not None:
+                        landmarks = np.asarray(landmarks)[confident]
                 x1, y1, x2, y2 = boxes[0]
                 if not np.isfinite(boxes[0]).all() or not np.isfinite(probabilities[0]):
                     raise FaceRejected("LOW_FACE_QUALITY")
+                face_width, face_height = int(x2 - x1), int(y2 - y1)
                 if probabilities[0] < 0.95 or min(x2 - x1, y2 - y1) < 80:
                     raise FaceRejected("LOW_FACE_QUALITY")
                 if x1 < 0 or y1 < 0 or x2 > image.width or y2 > image.height:
@@ -115,19 +141,33 @@ class FaceService:
                 if pixels.std() < 12 or not 35 < pixels.mean() < 225:
                     raise FaceRejected("LOW_FACE_QUALITY")
                 gray = cv2.cvtColor(pixels, cv2.COLOR_RGB2GRAY)
-                if cv2.Laplacian(gray, cv2.CV_64F).var() < 40:
+                # Compare equal-size face crops instead of using one threshold
+                # on arbitrary camera resolutions. Never sharpen before scoring.
+                gray = cv2.resize(gray, (160, 160), interpolation=(
+                    cv2.INTER_AREA if min(gray.shape) >= 160 else cv2.INTER_LINEAR))
+                sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+                if sharpness < 40:
                     raise FaceRejected("FACE_TOO_BLURRY")
                 pose = classify_pose(landmarks[0] if landmarks is not None else None)
                 # Cắt đúng box vừa kiểm tra, không detect lại rồi lấy mặt đầu tiên.
                 face_tensor = self.mtcnn.extract(image, boxes, save_path=None)
                 embedding = self._encode_face_tensor(face_tensor)
+                outcome = "OK"
                 return FaceObservation(embedding.tolist(), pose, photo)
         except FaceRejected as exc:
+            outcome = str(exc)
             exc.photo = photo
             raise
         except Exception as exc:
             # Lỗi GPU/thư viện không phải kết quả nhận dạng thất bại.
             raise FaceUnavailable("AI_UNAVAILABLE") from exc
+        finally:
+            # Opt-in DEBUG metrics contain no image, embedding, identity or token.
+            logger.debug("face_frame outcome=%s crop=%dx%d sharpness=%s detect_ms=%.1f total_ms=%.1f",
+                         outcome, face_width, face_height,
+                         round(sharpness, 1) if sharpness is not None else None,
+                         (detected_at - started) * 1000,
+                         (time.perf_counter() - started) * 1000)
 
     @staticmethod
     def _is_face_model(path):
