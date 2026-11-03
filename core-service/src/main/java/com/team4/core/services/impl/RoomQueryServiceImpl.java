@@ -4,7 +4,6 @@ import com.team4.core.dtos.request.RoomSearchRequest;
 import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.dtos.response.RoomSummaryResponse;
-import com.team4.core.dtos.response.PublicHouseDetailResponse;
 import com.team4.core.entities.Floor;
 import com.team4.core.entities.House;
 import com.team4.core.entities.Post;
@@ -24,7 +23,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -148,15 +146,10 @@ public class RoomQueryServiceImpl implements RoomQueryService {
             return RoomSummaryResponse.builder()
                     .postId(post.getId())
                     .roomId(room.getId())
-                    .houseId(house.getId())
-                    .floorId(room.getFloor().getId())
                     .landlordId(post.getLandlordId())
                     .landlordName(landlord != null ? landlord.getFullName() : null)
                     .contactPhone(landlord != null ? landlord.getPhoneNumber() : null)
                     .title(post.getTitle())
-                    .houseName(house.getName())
-                    .floorNumber(room.getFloor().getFloorNumber())
-                    .roomNumber(room.getRoomNumber())
                     .rentalPrice(rentalPrice)
                     .area(room.getArea())
                     .maxTenants(room.getMaxTenants())
@@ -231,110 +224,6 @@ public class RoomQueryServiceImpl implements RoomQueryService {
                 .available(!room.isRented())
                 .imageUrls(imageUrls)
                 .createdAt(post.getCreatedAt())
-                .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PublicHouseDetailResponse getHouseDetail(UUID houseId) {
-        List<Post> posts = postRepository.findPublicByHouseId(houseId);
-        if (posts.isEmpty()) {
-            throw new AppException(ErrorCode.ROOM_UNAVAILABLE);
-        }
-
-        House house = posts.getFirst().getRoom().getFloor().getHouse();
-        UUID landlordId = posts.getFirst().getLandlordId();
-        User landlord = landlordId == null
-                ? null
-                : userRepository.findById(landlordId).orElse(null);
-        List<UUID> roomIds = posts.stream().map(Post::getRoomId).toList();
-        Map<UUID, List<String>> imagesByRoom = roomImageRepository
-                .findByRoomIdInOrderByDisplayOrderAsc(roomIds)
-                .stream()
-                .collect(Collectors.groupingBy(
-                        image -> image.getRoom().getId(),
-                        LinkedHashMap::new,
-                        Collectors.mapping(RoomImage::getImageUrl, Collectors.toList())));
-        Map<UUID, Floor> floorsById = new LinkedHashMap<>();
-        Map<UUID, List<RoomDetailResponse>> roomsByFloor = new LinkedHashMap<>();
-
-        for (Post post : posts) {
-            Room room = post.getRoom();
-            Floor floor = room.getFloor();
-            BigDecimal rentalPrice = post.getRentalPrice() == null
-                    ? room.getBasePrice()
-                    : post.getRentalPrice();
-            floorsById.putIfAbsent(floor.getId(), floor);
-            roomsByFloor.computeIfAbsent(floor.getId(), ignored -> new ArrayList<>())
-                    .add(RoomDetailResponse.builder()
-                            .postId(post.getId())
-                            .roomId(room.getId())
-                            .houseId(house.getId())
-                            .floorId(floor.getId())
-                            .landlordId(landlordId)
-                            .landlordName(landlord == null ? null : landlord.getFullName())
-                            .contactPhone(landlord == null ? null : landlord.getPhoneNumber())
-                            .houseName(house.getName())
-                            .floorName("Tầng " + floor.getFloorNumber())
-                            .floorNumber(floor.getFloorNumber())
-                            .roomNumber(room.getRoomNumber())
-                            .title(post.getTitle())
-                            .description(post.getDescription())
-                            .rentalPrice(rentalPrice)
-                            .depositAmount(post.getDepositAmount())
-                            .area(room.getArea())
-                            .maxTenants(room.getMaxTenants())
-                            .availableFrom(post.getAvailableFrom())
-                            .addressStreet(house.getAddressStreet())
-                            .ward(house.getWard())
-                            .district(house.getDistrict())
-                            .city(house.getCity())
-                            .hasPrivateBathroom(room.isHasPrivateBathroom())
-                            .hasAirConditioner(room.isHasAirConditioner())
-                            .hasWaterHeater(room.isHasWaterHeater())
-                            .hasBalcony(room.isHasBalcony())
-                            .amenitiesDescription(room.getAmenitiesDescription())
-                            .rented(room.isRented())
-                            .available(!room.isRented() && room.getStatus() == com.team4.core.enums.RoomStatus.AVAILABLE)
-                            .imageUrls(imagesByRoom.getOrDefault(room.getId(), List.of()))
-                            .createdAt(post.getCreatedAt())
-                            .build());
-        }
-
-        List<PublicHouseDetailResponse.FloorGroup> floors = floorsById.values().stream()
-                .map(floor -> PublicHouseDetailResponse.FloorGroup.builder()
-                        .floorId(floor.getId())
-                        .floorNumber(floor.getFloorNumber())
-                        .rooms(roomsByFloor.getOrDefault(floor.getId(), List.of()))
-                        .build())
-                .toList();
-        List<RoomDetailResponse> rooms = roomsByFloor.values().stream().flatMap(List::stream).toList();
-        BigDecimal minimumPrice = rooms.stream()
-                .map(RoomDetailResponse::getRentalPrice)
-                .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-        int availableRooms = (int) rooms.stream().filter(RoomDetailResponse::isAvailable).count();
-        String primaryImageUrl = rooms.stream()
-                .flatMap(room -> room.getImageUrls().stream())
-                .findFirst()
-                .orElse(null);
-
-        return PublicHouseDetailResponse.builder()
-                .houseId(house.getId())
-                .landlordId(landlordId)
-                .landlordName(landlord == null ? null : landlord.getFullName())
-                .contactPhone(landlord == null ? null : landlord.getPhoneNumber())
-                .houseName(house.getName())
-                .addressStreet(house.getAddressStreet())
-                .ward(house.getWard())
-                .district(house.getDistrict())
-                .city(house.getCity())
-                .description(house.getDescription())
-                .minimumPrice(minimumPrice)
-                .availableRooms(availableRooms)
-                .totalRooms(rooms.size())
-                .primaryImageUrl(primaryImageUrl)
-                .floors(floors)
                 .build();
     }
 }

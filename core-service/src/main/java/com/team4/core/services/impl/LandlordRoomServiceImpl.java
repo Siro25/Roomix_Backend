@@ -238,9 +238,7 @@ public class LandlordRoomServiceImpl implements LandlordRoomService {
                 .findFirstByRoomIdAndLandlordIdOrderByCreatedAtDesc(roomId, landlordId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_POST_NOT_FOUND));
 
-        if (post.getStatus() != PostStatus.DRAFT
-                && post.getStatus() != PostStatus.REJECTED
-                && post.getStatus() != PostStatus.HIDDEN) {
+        if (post.getStatus() != PostStatus.DRAFT && post.getStatus() != PostStatus.REJECTED) {
             throw new AppException(ErrorCode.ROOM_UPDATE_NOT_ALLOWED);
         }
 
@@ -265,7 +263,7 @@ public class LandlordRoomServiceImpl implements LandlordRoomService {
         post.setRentalPrice(request.getBasePrice());
         post.setDepositAmount(request.getDepositAmount());
         post.setAvailableFrom(request.getAvailableFrom());
-        if (post.getStatus() == PostStatus.REJECTED || post.getStatus() == PostStatus.HIDDEN) {
+        if (post.getStatus() == PostStatus.REJECTED) {
             post.setStatus(PostStatus.DRAFT);
             post.setRejectReason(null);
         }

@@ -5,7 +5,6 @@ import com.team4.core.dtos.response.ApiResponse;
 import com.team4.core.dtos.response.PageResponse;
 import com.team4.core.dtos.response.RoomDetailResponse;
 import com.team4.core.dtos.response.RoomSummaryResponse;
-import com.team4.core.dtos.response.PublicHouseDetailResponse;
 import com.team4.core.services.RoomQueryService;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -36,14 +35,6 @@ public class RoomController {
         return ApiResponse.<RoomDetailResponse>builder()
                 .message("Lấy chi tiết phòng thành công")
                 .data(roomQueryService.getDetail(roomId))
-                .build();
-    }
-
-    @GetMapping("/houses/{houseId}")
-    public ApiResponse<PublicHouseDetailResponse> getHouseDetail(@PathVariable UUID houseId) {
-        return ApiResponse.<PublicHouseDetailResponse>builder()
-                .message("Lấy chi tiết nhà và danh sách phòng thành công")
-                .data(roomQueryService.getHouseDetail(houseId))
                 .build();
     }
 }
