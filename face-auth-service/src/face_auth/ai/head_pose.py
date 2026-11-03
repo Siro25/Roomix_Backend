@@ -19,8 +19,10 @@ def classify_pose(points):
     middle_x = (float(left[0]) + float(right[0])) / 2
     middle_y = (float(left[1]) + float(right[1])) / 2
     yaw = ((float(nose[0]) - middle_x) * dx + (float(nose[1]) - middle_y) * dy) / distance ** 2
+    # Uploads are not mirrored: the person's left appears on image-right.
+    # Action names follow the person, matching a mirrored webcam preview.
     if yaw < -0.22:
-        return "TURN_LEFT"
-    if yaw > 0.22:
         return "TURN_RIGHT"
+    if yaw > 0.22:
+        return "TURN_LEFT"
     return "CENTER" if abs(yaw) < 0.12 else "TRANSITION"

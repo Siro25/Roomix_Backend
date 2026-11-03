@@ -12,8 +12,9 @@ def points(nose_x=100):
 
 class HeadPoseTests(unittest.TestCase):
     def test_center_left_right_and_transition(self):
-        for nose, expected in ((100, "CENTER"), (80, "TURN_LEFT"),
-                               (120, "TURN_RIGHT"), (110, "TRANSITION")):
+        # Raw camera coordinates are opposite to the person's left/right.
+        for nose, expected in ((100, "CENTER"), (80, "TURN_RIGHT"),
+                               (120, "TURN_LEFT"), (110, "TRANSITION")):
             with self.subTest(nose=nose):
                 self.assertEqual(classify_pose(points(nose)), expected)
 

@@ -38,8 +38,10 @@ thông số bảo đảm độ chính xác từ thư viện.
 - Quá thời gian bước trả `LIVENESS_TIMEOUT`; LOGIN thất bại sẽ gửi ảnh đúng
   lượt thử sau quyết định Core. ENROLL thất bại không gửi ảnh Telegram.
 
-Trái/phải là hướng trên **ảnh gốc gửi lên**. Nếu frontend lật phần xem trước
-bằng CSS, cần hiển thị hướng dẫn tương ứng, không tự lật canvas gửi server.
+Trái/phải tính theo **người trước camera**. Frontend hiển thị preview lật gương
+và mũi tên cùng hướng với action. Canvas vẫn gửi ảnh gốc không lật; `head_pose.py`
+đổi hướng từ tọa độ ảnh sang hướng của người dùng. Cần cập nhật đồng thời
+Face service và frontend khi triển khai thay đổi quy ước này.
 
 ## Đã kiểm tra và chưa kiểm tra
 
