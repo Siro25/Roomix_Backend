@@ -15,6 +15,8 @@ public interface LandlordPropertyService {
 
     List<LandlordPropertyResponse> getOverview(UUID landlordId);
 
+    void submitHouseListing(UUID landlordId, UUID houseId);
+
     HouseResponse getHouse(UUID landlordId, UUID houseId);
 
 

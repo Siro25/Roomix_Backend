@@ -5,6 +5,7 @@ import com.team4.core.enums.PostStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -13,13 +14,17 @@ import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AdminPostResponse {
     UUID id;
     UUID landlordId;
     UUID roomId;
+    UUID houseId;
+    String houseName;
+    int roomCount;
+    List<AdminPostRoomResponse> rooms;
     String title;
     String description;
     BigDecimal rentalPrice;
@@ -38,6 +43,9 @@ public class AdminPostResponse {
                 .id(post.getId())
                 .landlordId(post.getLandlordId())
                 .roomId(post.getRoomId())
+                .houseId(post.getRoom().getFloor().getHouse().getId())
+                .houseName(post.getRoom().getFloor().getHouse().getName())
+                .roomCount(1)
                 .title(post.getTitle())
                 .description(post.getDescription())
                 .rentalPrice(post.getRentalPrice())

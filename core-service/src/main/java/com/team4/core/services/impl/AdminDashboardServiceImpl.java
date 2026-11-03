@@ -16,6 +16,8 @@ import com.team4.core.repositories.UserRepository;
 import com.team4.core.repositories.ViolationReportRepository;
 import com.team4.core.services.AdminDashboardService;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +41,23 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     public AdminDashboardResponse getDashboard(UUID adminId) {
         var newest = PageRequest.of(0, PREVIEW_SIZE, Sort.by("createdAt").descending());
         List<ReportStatus> openStatuses = List.of(ReportStatus.PENDING, ReportStatus.REVIEWING);
+        Map<UUID, AdminPostResponse> pendingHouseMap = new LinkedHashMap<>();
+        postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PENDING).forEach(post -> {
+            UUID houseId = post.getRoom().getFloor().getHouse().getId();
+            AdminPostResponse existing = pendingHouseMap.get(houseId);
+            if (existing == null) {
+                pendingHouseMap.put(houseId, AdminPostResponse.from(post));
+            } else {
+                pendingHouseMap.put(houseId, existing.toBuilder()
+                        .roomCount(existing.getRoomCount() + 1)
+                        .build());
+            }
+        });
+        long approvedHouseCount = postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.APPROVED)
+                .stream()
+                .map(post -> post.getRoom().getFloor().getHouse().getId())
+                .distinct()
+                .count();
 
         return AdminDashboardResponse.builder()
                 .totalUsers(userRepository.count())
@@ -52,13 +71,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .totalRooms(roomRepository.count())
                 .availableRooms(roomRepository.countByStatusAndRentedFalse(RoomStatus.AVAILABLE))
                 .rentedRooms(roomRepository.countByRentedTrue())
-                .approvedPosts(postRepository.countByStatus(PostStatus.APPROVED))
-                .pendingPostCount(postRepository.countByStatus(PostStatus.PENDING))
+                .approvedPosts(approvedHouseCount)
+                .pendingPostCount(pendingHouseMap.size())
                 .openReportCount(reportRepository.countByStatusIn(openStatuses))
                 .unreadNotificationCount(notificationRepository.countByUserIdAndReadFalse(adminId))
-                .pendingPosts(postRepository.findByStatus(PostStatus.PENDING, newest).stream()
-                        .map(AdminPostResponse::from)
-                        .toList())
+                .pendingPosts(pendingHouseMap.values().stream().limit(PREVIEW_SIZE).toList())
                 .pendingLandlordProfiles(userRepository.findByRoleAndStatus(
                                 Role.LANDLORD,
                                 UserStatus.PENDING_VERIFICATION,

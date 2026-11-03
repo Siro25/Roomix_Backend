@@ -51,6 +51,16 @@ public class LandlordPropertyController {
                 .build();
     }
 
+    @PostMapping("/{houseId}/listing/submit")
+    public ApiResponse<Void> submitHouseListing(
+            @PathVariable UUID houseId,
+            @AuthenticationPrincipal Jwt jwt) {
+        landlordPropertyService.submitHouseListing(UUID.fromString(jwt.getSubject()), houseId);
+        return ApiResponse.<Void>builder()
+                .message("Đã gửi toàn bộ tin nhà và các phòng chờ duyệt")
+                .build();
+    }
+
     @GetMapping("/{houseId}")
 
     public ApiResponse<HouseResponse> getHouse(@PathVariable UUID houseId,

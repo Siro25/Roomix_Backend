@@ -2,16 +2,27 @@ package com.team4.core.repositories;
 
 import com.team4.core.entities.Room;
 import com.team4.core.enums.RoomStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RoomRepository extends JpaRepository<Room, UUID> {
     Optional<Room> findByIdAndFloorHouseLandlordId(UUID id, UUID landlordId);
+
+    @EntityGraph(attributePaths = "floor")
+    @Query("""
+            select room
+            from Room room
+            where room.floor.house.landlordId = :landlordId
+            order by room.floor.floorNumber asc, room.roomNumber asc
+            """)
+    List<Room> findOverviewByLandlordId(@Param("landlordId") UUID landlordId);
 
     boolean existsByFloorId(UUID floorId);
 

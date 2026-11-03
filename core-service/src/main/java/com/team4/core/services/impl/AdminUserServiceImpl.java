@@ -10,11 +10,11 @@ import com.team4.core.enums.NotificationType;
 import com.team4.core.enums.UserStatus;
 import com.team4.core.exception.AppException;
 import com.team4.core.exception.ErrorCode;
-import com.team4.core.repositories.HouseRepository;
 import com.team4.core.repositories.UserRepository;
 import com.team4.core.services.AccountNotificationService;
 import com.team4.core.services.AdminUserService;
 import com.team4.core.services.AuditService;
+import com.team4.core.services.LandlordPropertyService;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,7 +34,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private static final String REJECT_LANDLORD = "REJECT_LANDLORD";
 
     private final UserRepository userRepository;
-    private final HouseRepository houseRepository;
+    private final LandlordPropertyService landlordPropertyService;
     private final AuditService auditService;
     private final AccountNotificationService notificationService;
 
@@ -59,9 +59,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public List<LandlordPropertyResponse> getLandlordProperties(UUID landlordId) {
         User landlord = findManagedUser(landlordId);
         requireLandlord(landlord);
-        return houseRepository.findDistinctByLandlordIdOrderByCreatedAtDesc(landlordId).stream()
-                .map(LandlordPropertyResponse::from)
-                .toList();
+        return landlordPropertyService.getOverview(landlordId);
     }
 
     @Override
