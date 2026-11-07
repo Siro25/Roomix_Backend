@@ -1,0 +1,8 @@
+roomix-demo.3-24-130-150.sslip.io {
+  encode zstd gzip
+
+  @websocket path /api/ws*
+  reverse_proxy @websocket api-gateway:8080
+
+  reverse_proxy frontend:3000
+}
